@@ -22,6 +22,7 @@ import {
   View,
   Modal,
   Dimensions,
+  KeyboardAvoidingView,
 } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -86,6 +87,7 @@ export default function CheckoutScreen() {
   const [vehicleType, setVehicleType] = useState("Bicycle");
   const [showWebView, setShowWebView] = useState(false);
   const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
+  const [orderDescription, setOrderDescription] = useState("");
 
   const cartItems = getCartItems();
   const subtotal = getCartSubtotal();
@@ -113,7 +115,7 @@ export default function CheckoutScreen() {
   const handleAddAddress = () => {
     router.push("/profile/addresses/add");
   };
-
+  const token = user?.token;
   const handlePlaceOrder = async () => {
     setIsProcessing(true);
     let result: any = null;
@@ -165,9 +167,10 @@ export default function CheckoutScreen() {
         tip: tip,
         ...(serviceType === "dine-in" && { tableNumber }),
         ...(serviceType === "pickup" && { pickupTime }),
+        description: orderDescription,
       };
 
-      console.log("Order payload:", JSON.stringify(orderPayload, null, 2));
+      
 
       const response = await fetch(
         "https://gebeta-delivery1.onrender.com/api/v1/orders/place-order",
@@ -176,7 +179,7 @@ export default function CheckoutScreen() {
           headers: {
             "Content-Type": "application/json",
             Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4OTFhNjM0NTZlYWE3ODgxMDJmOGM5NyIsImlhdCI6MTc1NjE5MTI0NiwiZXhwIjoxNzYzOTY3MjQ2fQ.Y9l_J68iF512VQKb0y5jXTWjFVSfRLxxqXuZsVS3ISE",
+              `Bearer ${token}`,
           },
           body: JSON.stringify(orderPayload),
         }
@@ -350,11 +353,17 @@ export default function CheckoutScreen() {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Restaurant Info Card */}
         {restaurant && (
           <View style={styles.restaurantCard}>
@@ -585,6 +594,23 @@ export default function CheckoutScreen() {
           </View>
         )}
 
+        {/* Order Description */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Order Notes</Text>
+          <View style={styles.orderDescriptionContainer}>
+            <TextInput
+              style={styles.orderDescriptionInput}
+              placeholder="Add special instructions or notes for your order (optional)"
+              placeholderTextColor={colors.lightText}
+              value={orderDescription}
+              onChangeText={setOrderDescription}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          </View>
+        </View>
+
         {/* Order Items */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Order</Text>
@@ -689,7 +715,8 @@ export default function CheckoutScreen() {
         <View style={styles.securityBadge}>
           <Text style={styles.securityText}>Secure checkout with encryption</Text>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Footer with Place Order Button */}
       <View style={styles.footer}>
@@ -752,6 +779,9 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
 
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
   },
@@ -1132,6 +1162,18 @@ const styles = StyleSheet.create({
   pickupTimeTextActive: {
     color: colors.primary,
     fontWeight: "600",
+  },
+  orderDescriptionContainer: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.divider,
+  },
+  orderDescriptionInput: {
+    padding: 16,
+    fontSize: 16,
+    color: colors.text,
+    minHeight: 80,
   },
   orderItemsCard: {
     backgroundColor: colors.cardBackground,

@@ -19,7 +19,7 @@ export interface User {
   address?: string;
 }
 
-export type UserRole = 'user' | 'owner' | 'manager' | 'admin';
+export type UserRole = 'Customer' | 'Manager' | 'Delivery_Person' | 'Admin';
 
 export interface UserPreferences {
   darkMode?: boolean;

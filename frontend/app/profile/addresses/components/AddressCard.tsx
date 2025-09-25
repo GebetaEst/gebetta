@@ -35,7 +35,7 @@ export default function AddressCard({ address, onEdit, onDelete, onSetDefault }:
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.labelContainer}>
-          <Text style={getLabelStyle(address.label)}>{labelMap[address.label]}</Text>
+          <Text style={getLabelStyle(address.label)}>{labelMap[address.label as keyof typeof labelMap]}</Text>
           {address.isDefault && (
             <Text style={styles.defaultBadge}>Default</Text>
           )}

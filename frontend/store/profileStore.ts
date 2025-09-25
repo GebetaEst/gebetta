@@ -53,16 +53,13 @@ export const useProfileStore = create<ProfileState>()(
             console.error('❌ No token provided to fetchAddresses');
             throw new Error('Authentication required');
           }
-          
-          console.log('📍 Fetching user addresses from API...');
-          console.log('📍 Token length:', token?.length || 0);
-          console.log('📍 API endpoint:', 'MY_ADDRESSES');
+        
           
           const response = await authAPI.getMyAddresses(token);
           
           console.log('📍 Addresses API response:', {
-            status: response?.status,
-            addressCount: response?.addresses?.length || 0,
+            // status: response?.status,
+            // addressCount: response?.addresses?.length || 0,
             hasData: !!response?.addresses
           });
           
@@ -264,12 +261,11 @@ export const useProfileStore = create<ProfileState>()(
             avatar: `https://ui-avatars.com/api/?name=User+${userId.substring(0, 4)}&background=random`,
             bio: "Food enthusiast and home chef",
             location: "New York, NY",
-            website: "https://example.com",
             followers: Math.floor(Math.random() * 500),
             following: Math.floor(Math.random() * 300),
             recipes: Math.floor(Math.random() * 50),
             reviews: Math.floor(Math.random() * 100),
-            role: "user",
+            role: "Customer",
             createdAt: new Date().toISOString(),
           };
           
@@ -311,7 +307,7 @@ export const useProfileStore = create<ProfileState>()(
             following: Math.floor(Math.random() * 150),
             recipes: Math.floor(Math.random() * 20),
             reviews: Math.floor(Math.random() * 40),
-            role: "user",
+            role: "Customer",
             createdAt: new Date().toISOString(),
           }));
           
@@ -348,7 +344,7 @@ export const useProfileStore = create<ProfileState>()(
             following: Math.floor(Math.random() * 200),
             recipes: Math.floor(Math.random() * 30),
             reviews: Math.floor(Math.random() * 50),
-            role: "user",
+            role: "Customer",
             createdAt: new Date().toISOString(),
           }));
           
@@ -379,7 +375,7 @@ export const useProfileStore = create<ProfileState>()(
                 email: `user${userId.substring(0, 4)}@example.com`,
                 phone: "+1 (555) 123-4567",
                 avatar: `https://ui-avatars.com/api/?name=User+${userId.substring(0, 4)}&background=random`,
-                role: "user",
+                role: "Customer",
                 createdAt: new Date().toISOString(),
               },
             ],

@@ -53,7 +53,11 @@ interface Styles {
   };
 }
 
-export function AddressForm({ onSubmit, initialData }: AddressFormProps) {
+interface ExtendedAddressFormProps extends AddressFormProps {
+  isGettingLocation?: boolean;
+}
+
+export function AddressForm({ onSubmit, initialData, isGettingLocation }: ExtendedAddressFormProps) {
   const addressSchema = z.object({
     street: z.string().min(1, 'Name is required'),
     city: z.string().min(1, 'Label is required'),
@@ -141,8 +145,11 @@ export function AddressForm({ onSubmit, initialData }: AddressFormProps) {
       <TouchableOpacity
         style={styles.button}
         onPress={handleSave}
+        disabled={isGettingLocation}
       >
-        <Text style={styles.buttonText}>Save Address</Text>
+        <Text style={styles.buttonText}>
+          {isGettingLocation ? 'Getting Location...' : 'Save Address'}
+        </Text>
       </TouchableOpacity>
     </View>
   );

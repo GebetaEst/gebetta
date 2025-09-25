@@ -97,17 +97,17 @@ export default function LoginScreen() {
         }),
       });
 
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', response.headers);
+      console.log('📡 Response status:', response);
+      // console.log('📡 Response headers:', response.headers);
 
       const data = await response.json();
       console.log('✅ Server response:', data);
-      console.log('✅ Response structure:', {
-        hasUser: !!data.data?.user,
-        hasToken: !!data.token,
-        userKeys: data.data?.user ? Object.keys(data.data.user) : [],
-        tokenType: typeof data.token
-      });
+      // console.log('✅ Response structure:', {
+      //   hasUser: !!data.data?.user,
+      //   hasToken: !!data.token,
+      //   userKeys: data.data?.user ? Object.keys(data.data.user) : [],
+      //   tokenType: typeof data.token
+      // });
 
       if (!response.ok) {
         throw new Error(data?.message || 'Login failed');

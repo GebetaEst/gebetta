@@ -78,11 +78,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       await SecureStore.setItemAsync('userInfo', JSON.stringify(userData));
       await SecureStore.setItemAsync('userToken', token);
       
-      console.log('✅ Login successful - user data stored:', {
-        hasUser: !!userData,
-        hasToken: !!token,
-        userId: userData._id
-      });
+      // console.log('✅ Login successful - user data stored:', {
+      //   hasUser: !!userData,
+      //   hasToken: !!token,
+      //   userId: userData._id
+      // });
       
       set({ 
         user: userData, 
@@ -110,10 +110,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         SecureStore.getItemAsync('userToken')
       ]);
       
-      console.log('🔄 Initializing auth state...', {
-        hasUserData: !!userJson,
-        hasToken: !!token
-      });
+      // console.log('🔄 Initializing auth state...', {
+      //   hasUserData: !!userJson,
+      //   hasToken: !!token
+      // });
       
       if (userJson && token) {
         const user = JSON.parse(userJson);
@@ -125,10 +125,10 @@ export const useAuthStore = create<AuthState>((set) => ({
           await SecureStore.setItemAsync('userInfo', JSON.stringify(user));
         }
         
-        console.log('✅ Auth initialized with user:', {
-          userId: user._id,
-          hasToken: !!user.token
-        });
+        // console.log('✅ Auth initialized with user:', {
+        //   userId: user._id,
+        //   hasToken: !!user.token
+        // });
         
         set({ 
           user, 
@@ -136,7 +136,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           isLoading: false 
         });
       } else {
-        console.log('ℹ️ No valid auth data found');
+        // console.log('ℹ️ No valid auth data found');
         set({ 
           user: null, 
           isAuthenticated: false, 
@@ -144,7 +144,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         });
       }
     } catch (error) {
-      console.error('❌ Error initializing auth:', error);
+      // console.error('❌ Error initializing auth:', error);
       set({ 
         user: null, 
         isAuthenticated: false, 
@@ -193,7 +193,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
       
     } catch (error: any) {
-      console.error("Profile update error:", error);
+      // console.error("Profile update error:", error);
       set({ 
         error: error?.response?.data?.message || error?.message || "Failed to update profile" 
       });
@@ -209,29 +209,29 @@ export const useAuthStore = create<AuthState>((set) => ({
         SecureStore.getItemAsync('userToken')
       ]);
       
-      console.log('Debug Auth State:', {
-        hasUserJson: !!userJson,
-        hasToken: !!token,
-        userJson: userJson ? 'exists' : 'null',
-        token: token ? 'exists' : 'null'
-      });
+      // console.log('Debug Auth State:', {
+      //   hasUserJson: !!userJson,
+      //   hasToken: !!token,
+      //   userJson: userJson ? 'exists' : 'null',
+      //   token: token ? 'exists' : 'null'
+      // });
       
       if (userJson) {
         try {
           const user = JSON.parse(userJson);
-          console.log('Stored User Data:', {
-            id: user?._id,
-            email: user?.email,
-            role: user?.role
-          });
+          // console.log('Stored User Data:', {
+          //   id: user?._id,
+          //   email: user?.email,
+          //   role: user?.role
+          // });
         } catch (e) {
-          console.error('Error parsing stored user data:', e);
+          // console.error('Error parsing stored user data:', e);
         }
       }
       
       return { hasUser: !!userJson, hasToken: !!token };
     } catch (error) {
-      console.error('Error debugging auth state:', error);
+      // console.error('Error debugging auth state:', error);
       return { hasUser: false, hasToken: false, error };
     }
   },
