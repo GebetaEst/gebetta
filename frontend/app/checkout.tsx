@@ -2,7 +2,6 @@ import Button from "@/components/Button";
 import colors from "@/constants/colors";
 import typography from "@/constants/typography";
 import { restaurants } from "@/mocks/restaurants";
-import { addresses as mockAddresses } from "@/mocks/addresses";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { OrderServiceType } from "@/types/restaurant";
@@ -25,9 +24,28 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { WebView } from "react-native-webview";
+import * as Location from "expo-location";
 
 const { width } = Dimensions.get("window");
 const isTablet = width > 768;
+
+// Define address interface based on API response
+interface Address {
+  _id: string;
+  userId: string;
+  Name: string;
+  phoneNumber: string;
+  additionalInfo?: string;
+  label: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
 
 export default function CheckoutScreen() {
   const router = useRouter();
@@ -43,39 +61,71 @@ export default function CheckoutScreen() {
     clearCart,
   } = useCartStore();
   const { user } = useAuthStore();
-  // Use mock addresses for development/testing when user has no addresses
-  const addresses = user?.addresses && user.addresses.length > 0 ? user.addresses : mockAddresses;
   
-  // Helper function to get address ID regardless of interface
-  const getAddressId = (address: any) => address.id || address._id;
+  // State for addresses from API
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
+  
+  console.log(user?.token)
+  
+  // Helper function to get address ID
+  const getAddressId = (address: Address) => address?._id || null;
   
   // Helper function to get address display name
-  const getAddressDisplayName = (address: any) => {
-    if (address.Name) return address.Name;
-    if (address.addressLine1) return address.addressLine1;
-    return 'Address';
+  const getAddressDisplayName = (address: Address) => {
+    return address.Name || 'Address';
   };
   
   // Helper function to get address type/label
-  const getAddressType = (address: any) => {
-    if (address.label) return address.label;
-    if (address.type) return address.type;
-    return 'Address';
+  const getAddressType = (address: Address) => {
+    return address.label || 'Address';
   };
   
   // Helper function to get address details
-  const getAddressDetails = (address: any) => {
-    if (address.additionalInfo) return address.additionalInfo;
-    if (address.addressLine2) return address.addressLine2;
-    return null;
+  const getAddressDetails = (address: Address) => {
+    return address.additionalInfo || null;
   };
   
   // Helper function to get address coordinates
-  const getAddressCoordinates = (address: any) => {
-    if (address.coordinates) return address.coordinates;
-    if (address.location) return address.location;
-    return null;
+  const getAddressCoordinates = (address: Address) => {
+    return address.coordinates || null;
   };
+
+  // Function to fetch addresses from API
+  const fetchAddresses = async () => {
+    if (!user?.token) return;
+    
+    setIsLoadingAddresses(true);
+    try {
+      const response = await fetch("https://gebeta-delivery1.onrender.com/api/v1/users/myAddresses", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${user.token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Addresses fetched:", data);
+        
+        // Assuming the API returns addresses in data.addresses or directly in data
+        const addressList = data.addresses || data.data || data || [];
+        setAddresses(addressList);
+      } else {
+        console.error("Failed to fetch addresses:", response.status);
+        Alert.alert("Error", "Failed to load addresses");
+      }
+    } catch (error) {
+      console.error("Error fetching addresses:", error);
+      Alert.alert("Error", "Failed to load addresses");
+    } finally {
+      setIsLoadingAddresses(false);
+    }
+  };
+  useEffect(() => {
+    fetchAddresses();
+  }, []);
 
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
@@ -88,6 +138,12 @@ export default function CheckoutScreen() {
   const [showWebView, setShowWebView] = useState(false);
   const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
   const [orderDescription, setOrderDescription] = useState("");
+  
+  // Location tracking states
+  const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationRefused, setLocationRefused] = useState(false);
 
   const cartItems = getCartItems();
   const subtotal = getCartSubtotal();
@@ -96,6 +152,100 @@ export default function CheckoutScreen() {
   const total = getCartTotal() + tip;
 
   const restaurant = restaurants.find((r) => r.id === restaurantId);
+
+  // Function to get current location
+  const getCurrentLocation = async () => {
+    try {
+      // Show confirmation alert first
+      return new Promise<{latitude: number, longitude: number} | null>((resolve) => {
+        Alert.alert(
+          "Location Access Required",
+          "",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+              onPress: () => {
+                console.log("User cancelled location access");
+                setLocationRefused(true);
+                resolve(null);
+              },
+            },
+            {
+              text: "Allow",
+              style: "default",
+              onPress: async () => {
+                try {
+                  setIsGettingLocation(true);
+                  
+                  // Check if location services are enabled
+                  const isLocationEnabled = await Location.hasServicesEnabledAsync();
+                  if (!isLocationEnabled) {
+                    Alert.alert(
+                      "Location Services Disabled",
+                      "Please enable location services in your device settings to use location tracking for orders."
+                    );
+                    setIsGettingLocation(false);
+                    resolve(null);
+                    return;
+                  }
+
+                  // Request location permission
+                  const { status } = await Location.requestForegroundPermissionsAsync();
+                  setLocationPermission(status === "granted");
+
+                  if (status !== "granted") {
+                    Alert.alert(
+                      "Location Permission Required",
+                      "Location permission is required to track your exact location for order delivery."
+                    );
+                    setIsGettingLocation(false);
+                    resolve(null);
+                    return;
+                  }
+
+                  // Show getting location alert
+
+                  // Get current position with high accuracy
+                  const location = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.High,
+                    timeInterval: 5000,
+                    distanceInterval: 1,
+                  });
+
+                  const coords = {
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                  };
+
+                  setCurrentLocation(coords);
+                  setLocationRefused(false); // Reset location refused state when location is obtained
+                  console.log("Current location obtained:", coords);
+                  
+                  
+                  
+                  setIsGettingLocation(false);
+                  resolve(coords);
+                } catch (error) {
+                  console.error("Error getting location:", error);
+                  Alert.alert(
+                    "Location Error",
+                    "Unable to get your current location. Please check your location settings and try again."
+                  );
+                  setIsGettingLocation(false);
+                  resolve(null);
+                }
+              },
+            },
+          ]
+        );
+      });
+    } catch (error) {
+      console.error("Error in getCurrentLocation:", error);
+      setIsGettingLocation(false);
+      return null;
+    }
+  };
 
   useEffect(() => {
     // Simulate loading data
@@ -110,6 +260,18 @@ export default function CheckoutScreen() {
       const defaultAddress = addresses.find((addr) => addr.isDefault);
       setSelectedAddress(getAddressId(defaultAddress) || getAddressId(addresses[0]) || null);
     }
+    console.log("(o) (o)" , addresses)
+    // Get location permission status on mount
+    const checkLocationPermission = async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        setLocationPermission(status === "granted");
+      } catch (error) {
+        console.warn("Error checking location permission:", error);
+      }
+    };
+    
+    checkLocationPermission();
   }, [addresses, serviceType]);
 
   const handleAddAddress = () => {
@@ -122,7 +284,7 @@ export default function CheckoutScreen() {
 
     try {
       // Validate required fields
-      if (serviceType === "delivery" && !selectedAddress) {
+      if (serviceType === "delivery" && locationRefused && !selectedAddress) {
         Alert.alert("Error", "Please select a delivery address");
         setIsProcessing(false);
         return;
@@ -140,9 +302,68 @@ export default function CheckoutScreen() {
         return;
       }
 
+      // Get current phone location for all order types
+      let phoneLocation = currentLocation;
+      
+      // Only try to get location if we don't have it and user hasn't refused
+      if (!phoneLocation && !locationRefused) {
+        console.log("Getting current location for order...");
+        phoneLocation = await getCurrentLocation();
+        
+        if (!phoneLocation) {
+          // User refused location or location failed
+          if (serviceType === "delivery") {
+            Alert.alert(
+              "Location or Address Required",
+              "Please either allow location access or select a delivery address to continue with your order."
+            );
+          } else {
+            Alert.alert(
+              "Location Required",
+              "Unable to get your current location. Please check your location settings and try again."
+            );
+          }
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       const selectedAddressData = addresses.find(
         (addr) => getAddressId(addr) === selectedAddress
       );
+
+      // Get destination coordinates for delivery
+      let destinationLocation = null;
+      if (serviceType === "delivery") {
+        if (selectedAddressData) {
+          // Use selected address coordinates
+          const addressCoords = getAddressCoordinates(selectedAddressData);
+          if (addressCoords) {
+            destinationLocation = {
+              lat: addressCoords.lat ,
+              lng: addressCoords.lng 
+            };
+          } else {
+            // Fallback to phone location if address doesn't have coordinates
+            destinationLocation = phoneLocation ? {
+              lat: phoneLocation.latitude,
+              lng: phoneLocation.longitude,
+            } : {
+              lat: 9.033872,
+              lng: 38.750659,
+            };
+          }
+        } else {
+          // Use phone location as destination when no address is selected
+          destinationLocation = phoneLocation ? {
+            lat: phoneLocation.latitude,
+            lng: phoneLocation.longitude,
+          } : {
+            lat: 9.033872,
+            lng: 38.750659,
+          };
+        }
+      }
 
       const orderPayload = {
         restaurantId: restaurantId,
@@ -156,13 +377,16 @@ export default function CheckoutScreen() {
             : serviceType === "pickup"
             ? "Pickup"
             : "Dine-in",
+        // Include exact phone location if available
+        ...(phoneLocation && {
+          phoneLocation: {
+            lat: phoneLocation.latitude,
+            lng: phoneLocation.longitude,
+          },
+        }),
         ...(serviceType === "delivery" && {
           vehicleType: vehicleType,
-          destinationLocation: {
-            lat: 9.033872, // Fixed 
-            // coordinates for now
-            lng: 38.750659,
-          },
+          destinationLocation: destinationLocation,
         }),
         tip: tip,
         ...(serviceType === "dine-in" && { tableNumber }),
@@ -428,6 +652,8 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
+        
+
         {/* Vehicle Type for Delivery */}
         {serviceType === "delivery" && (
           <View style={styles.section}>
@@ -463,9 +689,54 @@ export default function CheckoutScreen() {
             </View>
           </View>
         )}
+        {/* Location Tracking Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Use Current location</Text>
+          <View style={styles.locationContainer}>
+            {currentLocation ? (
+              <View style={styles.locationSuccessContainer}>
+                <MapPin size={20} color={colors.success} />
+                <View style={styles.locationDetails}>
+                  <Text style={styles.locationStatusText}>Location captured successfully</Text>
+                  <Text style={styles.locationCoordsText}>
+                    {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.refreshLocationButton}
+                  onPress={getCurrentLocation}
+                  disabled={isGettingLocation}
+                >
+                  <MapPin size={16} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.getLocationButton}
+                onPress={getCurrentLocation}
+                disabled={isGettingLocation}
+              >
+                <View style={styles.getLocationGradient}>
+                  <MapPin size={24} color={colors.primary} />
+                  <Text style={styles.getLocationText}>
+                    {isGettingLocation ? "Getting Location..." : "Use Current Location"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+          {/* <Text style={styles.locationInfoText}>
+            Your exact location will be tracked when placing the order for better service delivery.
+          </Text> */}
+        </View>
 
-        {/* Delivery Address */}
-        {serviceType === "delivery" && (
+        {/* Delivery Address - Only show if user refused location */}
+        <Button style={styles.section} title={`${locationRefused ? "Hide Address List" : "Use Other Addresses"}`} onPress={() => {
+          setLocationRefused(prev=>!prev);
+          fetchAddresses();
+        }} />
+        {/* <Text>Location Refused: {locationRefused.toString()}</Text> */}
+        {serviceType === "delivery" && locationRefused && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Delivery Address</Text>
             {addresses.length === 0 ? (
@@ -477,7 +748,7 @@ export default function CheckoutScreen() {
               </TouchableOpacity>
             ) : (
               <View style={styles.addressesContainer}>
-                {addresses.map((address) => (
+                {addresses?.map((address) => (
                   <TouchableOpacity
                     key={getAddressId(address)}
                     style={[
@@ -509,7 +780,7 @@ export default function CheckoutScreen() {
                           <Text style={styles.addressText}>
                             {getAddressCoordinates(address)?.lat ? 
                               `Coordinates: ${getAddressCoordinates(address)?.lat.toFixed(4)}, ${getAddressCoordinates(address)?.lng.toFixed(4)}` :
-                              `Location: ${getAddressCoordinates(address)?.latitude.toFixed(4)}, ${getAddressCoordinates(address)?.longitude.toFixed(4)}`
+                             null
                             }
                           </Text>
                         )}
@@ -738,7 +1009,7 @@ export default function CheckoutScreen() {
             disabled={
               isLoading ||
               isProcessing ||
-              (serviceType === "delivery" && !selectedAddress) ||
+              (serviceType === "delivery" && locationRefused && !selectedAddress) ||
               (serviceType === "dine-in" && !tableNumber) ||
               (serviceType === "pickup" && !pickupTime)
             }
@@ -859,6 +1130,7 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 28,
+    
   },
   sectionTitle: {
     fontSize: 20,
@@ -1379,5 +1651,69 @@ const styles = StyleSheet.create({
   },
   placeOrderButton: {
     marginBottom: 0,
+  },
+  
+  // Location tracking styles
+  locationContainer: {
+    marginBottom: 12,
+  },
+  getLocationButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  getLocationGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    borderWidth: 2,
+    borderColor: colors.divider,
+    borderStyle: "dashed",
+    backgroundColor: colors.inputBackground,
+  },
+  getLocationText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.primary,
+    marginLeft: 12,
+  },
+  locationSuccessContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: colors.success,
+  },
+  locationDetails: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  locationStatusText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.success,
+    marginBottom: 4,
+  },
+  locationCoordsText: {
+    fontSize: 14,
+    color: colors.text,
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+  },
+  refreshLocationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + "15",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  locationInfoText: {
+    fontSize: 12,
+    color: colors.lightText,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

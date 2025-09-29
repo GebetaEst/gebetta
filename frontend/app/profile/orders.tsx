@@ -2,6 +2,7 @@ import colors from "@/constants/colors";
 import typography from "@/constants/typography";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { useAuthStore } from "@/store/useAuthStore";
 import { ChevronRight, Clock, MapPin, ShoppingBag } from "lucide-react-native";
 import React, { useEffect, useState, useRef } from "react";
 import {
@@ -19,12 +20,14 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
-const API_URL = "https://gebeta-delivery1.onrender.com/api/v1/orders/my-orders";
-const AUTH_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4OTFhNjM0NTZlYWE3ODgxMDJmOGM5NyIsImlhdCI6MTc1NjE5MTI0NiwiZXhwIjoxNzYzOTY3MjQ2fQ.Y9l_J68iF512VQKb0y5jXTWjFVSfRLxxqXuZsVS3ISE";
 
 export default function OrdersScreen() {
+  const API_URL = "https://gebeta-delivery1.onrender.com/api/v1/orders/my-orders";
   const router = useRouter();
+  const { user } = useAuthStore();
+  const AUTH_TOKEN = "user?.token";
+  console.log(user?.token);
+  
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -44,7 +47,7 @@ export default function OrdersScreen() {
     try {
       const res = await fetch(API_URL, {
         headers: {
-          Authorization: `Bearer ${AUTH_TOKEN}`,
+          Authorization: `Bearer ${user?.token}`,
           "Content-Type": "application/json",
         },
       });

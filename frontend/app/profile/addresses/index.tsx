@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+
 import { 
   View, 
   Text, 
@@ -17,6 +18,7 @@ import { AddressType } from '@/types/address';
 import colors from '@/constants/colors';
 import typography from '@/constants/typography';
 import Button from '@/components/Button';
+import { LocateFixed } from 'lucide-react-native';
 
 type GroupedAddresses = {
   [key: string]: AddressType[];
@@ -134,91 +136,91 @@ const styles = StyleSheet.create({
 });
 
 // Mock addresses to be used if none exist in the store
-const mockAddresses: AddressType[] = [
-  // Home addresses
-  {
-    id: 'home-1',
-    street: 'Bole Road, House #123',
-    city: 'Addis Ababa',
-    label: 'home',
-    isDefault: true,
-    note: 'Main residence - 3rd floor, Ring Road',
-    createdAt: '2025-01-15T08:30:00.000Z',
-    updatedAt: '2025-06-20T14:25:00.000Z'
-  },
-  {
-    id: 'home-2',
-    street: 'Megenagna, Condo #4B',
-    city: 'Addis Ababa',
-    label: 'home',
-    isDefault: false,
-    note: 'Weekend house - Near Friendship Center',
-    createdAt: '2024-11-05T10:15:00.000Z',
-    updatedAt: '2025-05-12T16:45:00.000Z'
-  },
-  // Work addresses
-  {
-    id: 'work-1',
-    street: 'Kazanchis Business District, 5th Floor',
-    city: 'Addis Ababa',
-    label: 'work',
-    isDefault: false,
-    note: 'EthioTech Solutions HQ - Reception on 1st floor',
-    createdAt: '2024-09-10T09:00:00.000Z',
-    updatedAt: '2025-06-18T11:30:00.000Z'
-  },
-  {
-    id: 'work-2',
-    street: 'CMC Road, Building #42',
-    city: 'Addis Ababa',
-    label: 'work',
-    isDefault: false,
-    note: 'Client site - Ask for security at main gate',
-    createdAt: '2025-02-20T13:45:00.000Z',
-    updatedAt: '2025-06-22T10:15:00.000Z'
-  },
-  {
-    id: 'work-3',
-    street: 'Bole Road, Dembel City Center, 7th Floor',
-    city: 'Addis Ababa',
-    label: 'work',
-    isDefault: false,
-    note: 'Co-working space - Available 24/7 with access card',
-    createdAt: '2025-04-05T08:00:00.000Z',
-    updatedAt: '2025-06-21T17:30:00.000Z'
-  },
-  // Other addresses
-  {
-    id: 'other-1',
-    street: 'Sarbet District, Near Edna Mall',
-    city: 'Addis Ababa',
-    label: 'other',
-    isDefault: false,
-    note: 'Spa & Wellness Center - Open 9AM-9PM',
-    createdAt: '2024-10-15T07:30:00.000Z',
-    updatedAt: '2025-06-19T19:45:00.000Z'
-  },
-  {
-    id: 'other-2',
-    street: 'Bole Atlas, Behind DH Geda Tower',
-    city: 'Addis Ababa',
-    label: 'other',
-    isDefault: false,
-    note: 'Friend\'s apartment - Call before visiting',
-    createdAt: '2025-03-12T16:20:00.000Z',
-    updatedAt: '2025-06-17T20:15:00.000Z'
-  },
-  {
-    id: 'other-3',
-    street: '4 Kilo, Arat Kilo Cultural Center',
-    city: 'Addis Ababa',
-    label: 'other',
-    isDefault: false,
-    note: 'Weekly coffee meetup - Every Saturday 4PM',
-    createdAt: '2025-01-30T10:00:00.000Z',
-    updatedAt: '2025-06-23T15:30:00.000Z'
-  }
-];
+// const mockAddresses: AddressType[] = [
+//   // Home addresses
+//   {
+//     id: 'home-1',
+//     street: 'Bole Road, House #123',
+//     city: 'Addis Ababa',
+//     label: 'home',
+//     isDefault: true,
+//     note: 'Main residence - 3rd floor, Ring Road',
+//     createdAt: '2025-01-15T08:30:00.000Z',
+//     updatedAt: '2025-06-20T14:25:00.000Z'
+//   },
+//   {
+//     id: 'home-2',
+//     street: 'Megenagna, Condo #4B',
+//     city: 'Addis Ababa',
+//     label: 'home',
+//     isDefault: false,
+//     note: 'Weekend house - Near Friendship Center',
+//     createdAt: '2024-11-05T10:15:00.000Z',
+//     updatedAt: '2025-05-12T16:45:00.000Z'
+//   },
+//   // Work addresses
+//   {
+//     id: 'work-1',
+//     street: 'Kazanchis Business District, 5th Floor',
+//     city: 'Addis Ababa',
+//     label: 'work',
+//     isDefault: false,
+//     note: 'EthioTech Solutions HQ - Reception on 1st floor',
+//     createdAt: '2024-09-10T09:00:00.000Z',
+//     updatedAt: '2025-06-18T11:30:00.000Z'
+//   },
+//   {
+//     id: 'work-2',
+//     street: 'CMC Road, Building #42',
+//     city: 'Addis Ababa',
+//     label: 'work',
+//     isDefault: false,
+//     note: 'Client site - Ask for security at main gate',
+//     createdAt: '2025-02-20T13:45:00.000Z',
+//     updatedAt: '2025-06-22T10:15:00.000Z'
+//   },
+//   {
+//     id: 'work-3',
+//     street: 'Bole Road, Dembel City Center, 7th Floor',
+//     city: 'Addis Ababa',
+//     label: 'work',
+//     isDefault: false,
+//     note: 'Co-working space - Available 24/7 with access card',
+//     createdAt: '2025-04-05T08:00:00.000Z',
+//     updatedAt: '2025-06-21T17:30:00.000Z'
+//   },
+//   // Other addresses
+//   {
+//     id: 'other-1',
+//     street: 'Sarbet District, Near Edna Mall',
+//     city: 'Addis Ababa',
+//     label: 'other',
+//     isDefault: false,
+//     note: 'Spa & Wellness Center - Open 9AM-9PM',
+//     createdAt: '2024-10-15T07:30:00.000Z',
+//     updatedAt: '2025-06-19T19:45:00.000Z'
+//   },
+//   {
+//     id: 'other-2',
+//     street: 'Bole Atlas, Behind DH Geda Tower',
+//     city: 'Addis Ababa',
+//     label: 'other',
+//     isDefault: false,
+//     note: 'Friend\'s apartment - Call before visiting',
+//     createdAt: '2025-03-12T16:20:00.000Z',
+//     updatedAt: '2025-06-17T20:15:00.000Z'
+//   },
+//   {
+//     id: 'other-3',
+//     street: '4 Kilo, Arat Kilo Cultural Center',
+//     city: 'Addis Ababa',
+//     label: 'other',
+//     isDefault: false,
+//     note: 'Weekly coffee meetup - Every Saturday 4PM',
+//     createdAt: '2025-01-30T10:00:00.000Z',
+//     updatedAt: '2025-06-23T15:30:00.000Z'
+//   }
+// ];
 
 export default function AddressesScreen() {
   const router = useRouter();
@@ -445,10 +447,11 @@ export default function AddressesScreen() {
       {/* Map Pin Instructions Banner */}
       <View style={styles.mapInstructionBanner}>
         <View style={styles.mapIconContainer}>
-          <MaterialIcons name="location-on" size={24} color="#3B82F6" />
+        <LocateFixed color="blue" />
+          
         </View>
         <View style={styles.mapInstructionContent}>
-          <Text style={styles.mapInstructionTitle}>📍 Pin Your Location</Text>
+          <Text style={styles.mapInstructionTitle}> <MaterialIcons name="location-on" size={16} color="#3B82F6" /> Pin Your Location</Text>
           <Text style={styles.mapInstructionText}>
             Tap the + button to add new addresses
           </Text>
@@ -560,7 +563,7 @@ export default function AddressesScreen() {
                         <Text style={{ color: colors.primary }}>Edit</Text>
                       </TouchableOpacity>
                       
-                      <TouchableOpacity 
+                      {/* <TouchableOpacity 
                         style={{ marginRight: 16 }}
                         onPress={() => handleSetDefaultAddress(address.id)}
                         disabled={address.isDefault}
@@ -570,7 +573,7 @@ export default function AddressesScreen() {
                         }}>
                           {address.isDefault ? 'Default' : 'Set as Default'}
                         </Text>
-                      </TouchableOpacity>
+                      </TouchableOpacity> */}
                       
                       <TouchableOpacity onPress={() => handleRemoveAddress(address.id)}>
                         <Text style={{ color: colors.error }}>Delete</Text>
