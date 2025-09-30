@@ -759,7 +759,7 @@ export default function CheckoutScreen() {
                 <View style={styles.locationDetails}>
                   <Text style={styles.locationStatusText}>Location captured successfully</Text>
                   <Text style={styles.locationCoordsText}>
-                    {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+                    {/* {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)} */}
                   </Text>
                 </View>
                 <TouchableOpacity

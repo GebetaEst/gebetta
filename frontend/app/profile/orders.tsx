@@ -19,6 +19,7 @@ import {
   Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import TrackingMap from "./TrackingMap";
 
 
 export default function OrdersScreen() {
@@ -30,6 +31,7 @@ export default function OrdersScreen() {
   
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -291,14 +293,16 @@ export default function OrdersScreen() {
                 // There is no "foodName" at the order level; show first foodName or fallback
                 const orderName =
                   order.orderItems && order.orderItems.length > 0
-                    ? order.orderItems[0].foodId?.foodName || "Order"
+                    ? order.orderItems.map((item: any) => item.name).join(", ")
                     : "Order";
                 const restaurant =
                   typeof order.restaurant_id === "object" && order.restaurant_id
                     ? order.restaurant_id
                     : {};
                 const restaurantName =
-                  restaurant.name || "Unknown Restaurant";
+                  order.restaurantId && order.restaurantId.name
+                    ? order.restaurantId?.name
+                    : "Unknown Restaurant";
                 const restaurantImage =
                   restaurant.imageCover ||
                   restaurant.image ||
@@ -328,8 +332,8 @@ export default function OrdersScreen() {
                   }
                   return acc;
                 }, {});
-                const orderVId = order.order_id || order._id || order.id || "N/A";
-                const orderVerificationCode = order.verification_code || "N/A";
+                const orderVId = order.orderCode|| "N/A";
+                const orderVerificationCode = order.userVerificationCode || "N/A";
                 // Create items display text
                 const itemsDisplay = Object.entries(groupedItems)
                   .map(([name, quantity]) => `${name}${(quantity as number) > 1 ? ` (${quantity})` : ''}`)
@@ -337,9 +341,9 @@ export default function OrdersScreen() {
                 
                 // Total: prefer totalPrice, fallback to foodTotal
                 const totalAmount =
-                  typeof order.totalPrice === "number"
-                    ? order.totalPrice
-                    : (typeof order.foodTotal === "number" ? order.foodTotal : 0);
+                  order.transaction && order.transaction.totalPrice && order.transaction.totalPrice.$numberDecimal
+                    ? parseFloat(order.transaction.totalPrice.$numberDecimal)
+                    : 0;
                 // Delivery time: not present, fallback to orderDate
                 const deliveryTime = new Date(orderDate).toLocaleString();
                 // Delivery address: try restaurant.location.address or null
@@ -364,11 +368,7 @@ export default function OrdersScreen() {
                         },
                       ]}
                     >
-                      <TouchableOpacity
-                        style={styles.cardTouchable}
-                        activeOpacity={0.95}
-                        onPress={() => handleViewOrder(orderId)}
-                      >
+                      <View style={styles.cardTouchable}>
                         {/* Card Header with Gradient */}
                         <LinearGradient
                           colors={getStatusGradient(status)}
@@ -391,7 +391,7 @@ export default function OrdersScreen() {
                               <Text style={styles.statusLabel}>
                                 {status.charAt(0).toUpperCase() + status.slice(1).replace(/-/g, " ")}
                               </Text>
-                              <Text style={styles.orderDateHeader}>{formatDate(orderDate)}</Text>
+                              {/* <Text style={styles.orderDateHeader}>{formatDate(orderDate)}</Text> */}
                             </View>
                           </View>
                         </LinearGradient>
@@ -409,7 +409,10 @@ export default function OrdersScreen() {
                               <View style={styles.restaurantImageOverlay} />
                             </View>
                             <View style={styles.restaurantDetails}>
+
                               <Text style={styles.restaurantName}>{restaurantName}</Text>
+
+
                               <View style={styles.orderSummary}>
                                 <ShoppingBag size={14} color="#6B7280" style={styles.summaryIcon} />
                                 <Text style={styles.itemCount}>
@@ -418,9 +421,9 @@ export default function OrdersScreen() {
                                 <Text style={styles.priceSeparator}>•</Text>
                                 <Text style={styles.totalPrice}>ETB {Number(totalAmount).toFixed(2)}</Text>
                               </View>
-                              <Text style={styles.itemsList} numberOfLines={2}>
+                              {/* <Text style={styles.itemsList} numberOfLines={2}>
                                 {itemsDisplay}
-                              </Text>
+                              </Text> */}
                             </View>
                           </View>
 
@@ -462,11 +465,11 @@ export default function OrdersScreen() {
                                 </View>
                               </View>
                               
-                              <View style={styles.detailRow}>
+                              {/* <View style={styles.detailRow}>
                                 <View style={styles.detailIconContainer}>
                                   <MapPin size={16} color="#6B7280" />
                                 </View>
-                                <View style={styles.detailTextContainer}>
+                                {/* <View style={styles.detailTextContainer}>
                                   <Text style={styles.detailLabel}>Delivery Address</Text>
                                   <Text style={styles.detailValue} numberOfLines={2}>
                                     {deliveryAddress?.addressLine1 ||
@@ -474,17 +477,17 @@ export default function OrdersScreen() {
                                       deliveryAddress?.address ||
                                       "Address not available"}
                                   </Text>
-                                </View>
-                              </View>
+                                </View> 
+                              </View> */}
                             </View>
                           </View>
 
                           {/* Track Delivery Button */}
-                          {status === "out-for-delivery" && (
+                          {status === "Delivering" && (
                             <View style={styles.actionContainer}>
                               <TouchableOpacity
                                 style={styles.trackButton}
-                                onPress={() => handleTrackDelivery(orderId)}
+                                onPress={() => setTrackingOrderId(orderId)}
                                 activeOpacity={0.9}
                               >
                                 <LinearGradient
@@ -499,8 +502,13 @@ export default function OrdersScreen() {
                               </TouchableOpacity>
                             </View>
                           )}
+                          {trackingOrderId === orderId && 
+                          <View style={styles.trackingMapContainer}>
+                            <TrackingMap  />
+                          </View>
+                          }
                         </View>
-                      </TouchableOpacity>
+                      </View>
                     </Animated.View>
                 );
               })}
@@ -658,6 +666,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
+    borderRadius:7,
+    backgroundColor:"#333",
+    padding:5,
   },
   orderDateHeader: {
     fontSize: 12,
@@ -795,5 +806,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.white,
     marginRight: 8,
+  },
+  trackingMapContainer: {
+    marginTop: 16,
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
 });
