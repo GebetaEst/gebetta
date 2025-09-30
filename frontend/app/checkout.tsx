@@ -138,6 +138,8 @@ export default function CheckoutScreen() {
   const [showWebView, setShowWebView] = useState(false);
   const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
   const [orderDescription, setOrderDescription] = useState("");
+  const [APIDeliveryFee, setAPIDeliveryFee] = useState(0);
+  const [deliveryFeeDisplay, setDeliveryFeeDisplay] = useState(0);
   
   // Location tracking states
   const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
@@ -149,7 +151,18 @@ export default function CheckoutScreen() {
   const subtotal = getCartSubtotal();
   const deliveryFee = getDeliveryFee();
   const tax = getTax();
-  const total = getCartTotal() + tip;
+  
+  // Calculate delivery fee from API based on vehicle type
+  const getAPIDeliveryFee = () => {
+    if (serviceType !== "delivery") return 0;
+    if (vehicleType === "Car") return APIDeliveryFee.Car?.deliveryFee || 0;
+    if (vehicleType === "Bicycle") return APIDeliveryFee.Bicycle?.deliveryFee || 0;
+    if (vehicleType === "Motorcycle") return APIDeliveryFee.Motor?.deliveryFee || 0;
+    return 0;
+  };
+  
+  const apiDeliveryFee = getAPIDeliveryFee();
+  const total = getCartTotal() + tip + apiDeliveryFee;
 
   const restaurant = restaurants.find((r) => r.id === restaurantId);
 
@@ -260,7 +273,7 @@ export default function CheckoutScreen() {
       const defaultAddress = addresses.find((addr) => addr.isDefault);
       setSelectedAddress(getAddressId(defaultAddress) || getAddressId(addresses[0]) || null);
     }
-    console.log("(o) (o)" , addresses)
+    // console.log("(o) (o)" , addresses)
     // Get location permission status on mount
     const checkLocationPermission = async () => {
       try {
@@ -278,6 +291,53 @@ export default function CheckoutScreen() {
     router.push("/profile/addresses/add");
   };
   const token = user?.token;
+  const handelDeliveryFee = async () => {
+    if (serviceType !== "delivery" || !selectedAddress) {
+      return;
+    }
+    
+    // Find the selected address from the addresses array
+    const address = addresses.find(addr => getAddressId(addr) === selectedAddress);
+    if (!address) {
+      return 0;
+    }
+    
+    const deliveryPayload = {
+      restaurantId: restaurantId,
+      destination: {
+        lat: address.coordinates.lat,
+        lng: address.coordinates.lng
+      }
+    }
+    
+    try {
+      const deliveryResponse = await fetch("https://gebeta-delivery1.onrender.com/api/v1/orders/estimate-delivery-fee", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(deliveryPayload),
+      });
+      const deliveryData = await deliveryResponse.json();
+      // console.log("$$$$$$ Delivery data:", deliveryData);
+      setAPIDeliveryFee(deliveryData.data);
+      
+      console.log("$$$$$$ APIDeliveryFee:", APIDeliveryFee);
+      return deliveryData.data.deliveryFee;
+
+    } 
+    catch (error) {
+      console.error("Error estimating delivery fee:", error);
+      return 0;
+    }
+  }
+
+  useEffect(() => {
+    handelDeliveryFee();
+  }, [selectedAddress , serviceType])
+  
+  
   const handlePlaceOrder = async () => {
     setIsProcessing(true);
     let result: any = null;
@@ -393,6 +453,7 @@ export default function CheckoutScreen() {
         ...(serviceType === "pickup" && { pickupTime }),
         description: orderDescription,
       };
+      
 
       
 
@@ -409,8 +470,7 @@ export default function CheckoutScreen() {
         }
       );
 
-      console.log("Response:", response);
-
+        console.log("====", orderPayload)
       if (response.ok) {
         result = await response.json();
         console.log("Order result:", result);
@@ -957,13 +1017,13 @@ export default function CheckoutScreen() {
             {serviceType === "delivery" && (
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Delivery Fee</Text>
-                <Text style={styles.summaryValue}>{deliveryFee.toFixed(2)} Birr</Text>
+                <Text style={styles.summaryValue}>{apiDeliveryFee.toFixed(2)} Birr</Text>
               </View>
             )}
 
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Tax (15%)</Text>
-              <Text style={styles.summaryValue}>{tax.toFixed(2)} Birr</Text>
+              <Text style={styles.summaryValue}>{tax.toFixed(2) } Birr</Text>
             </View>
 
             {serviceType !== "dine-in" && (
@@ -977,15 +1037,15 @@ export default function CheckoutScreen() {
 
             <View style={styles.summaryRow}>
               <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>{total.toFixed(2)} Birr</Text>
+              <Text style={styles.totalValue}>{total.toFixed(2) } Birr</Text>
             </View>
           </View>
         </View>
 
         {/* Security Badge */}
-        <View style={styles.securityBadge}>
+        {/* <View style={styles.securityBadge}>
           <Text style={styles.securityText}>Secure checkout with encryption</Text>
-        </View>
+        </View> */}
         </ScrollView>
       </KeyboardAvoidingView>
 
