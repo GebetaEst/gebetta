@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { authAPI } from "@/lib/api";
+import { useAuthStore } from "./useAuthStore";
 
 export interface ProfileState {
   profiles: User[];
@@ -120,7 +121,6 @@ export const useProfileStore = create<ProfileState>()(
           // If unauthorized, clear the auth state
           if (error.response?.status === 401) {
             console.log('⚠️ Unauthorized - clearing auth state');
-            const { useAuthStore } = await import('./useAuthStore');
             useAuthStore.getState().logout();
           }
           

@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { AddressFormData } from "@/types/address-form";
 import { AddressType } from "@/types/address";
 import React from "react";
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function EditAddressScreen() {
   const router = useRouter();
@@ -19,7 +20,6 @@ export default function EditAddressScreen() {
 
   const handleSubmit = async (data: AddressFormData) => {
     try {
-      const { useAuthStore } = await import('@/store/useAuthStore');
       const { user } = useAuthStore.getState();
       
       if (!user?.token) {

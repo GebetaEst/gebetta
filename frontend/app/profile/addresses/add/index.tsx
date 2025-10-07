@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { AddressFormData } from "@/types/address-form";
 import * as Location from 'expo-location';
 import { Alert } from 'react-native';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function AddAddressScreen() {
   const router = useRouter();
@@ -54,7 +55,6 @@ export default function AddAddressScreen() {
 
   const handleSubmit = async (data: AddressFormData) => {
     try {
-      const { useAuthStore } = await import('@/store/useAuthStore');
       const { user } = useAuthStore.getState();
       
       if (!user?.token) {

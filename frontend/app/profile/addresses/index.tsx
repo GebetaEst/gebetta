@@ -19,6 +19,7 @@ import colors from '@/constants/colors';
 import typography from '@/constants/typography';
 import Button from '@/components/Button';
 import { LocateFixed } from 'lucide-react-native';
+import { useAuthStore } from '@/store/useAuthStore';
 
 type GroupedAddresses = {
   [key: string]: AddressType[];
@@ -230,7 +231,6 @@ export default function AddressesScreen() {
   // Debug: Check auth state on mount
   useEffect(() => {
     const checkAuth = async () => {
-      const { useAuthStore } = await import('@/store/useAuthStore');
       const { user, isAuthenticated } = useAuthStore.getState();
       
       console.log('📍 Addresses: Auth state on mount:', {
@@ -248,7 +248,6 @@ export default function AddressesScreen() {
     const loadData = async () => {
       try {
         // Get auth token from secure storage
-        const { useAuthStore } = await import('@/store/useAuthStore');
         const { user } = useAuthStore.getState();
         
         console.log('📍 Addresses: Checking auth state...', {
@@ -314,7 +313,6 @@ export default function AddressesScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const { useAuthStore } = await import('@/store/useAuthStore');
               const { user } = useAuthStore.getState();
               if (user?.token) {
                 await removeAddress(id, user.token);
@@ -341,7 +339,6 @@ export default function AddressesScreen() {
           text: "Set as Default",
           onPress: async () => {
             try {
-              const { useAuthStore } = await import('@/store/useAuthStore');
               const { user } = useAuthStore.getState();
               if (user?.token) {
                 await setDefaultAddress(id, user.token);
@@ -423,7 +420,6 @@ export default function AddressesScreen() {
               borderRadius: 8,
             }}
             onPress={async () => {
-              const { useAuthStore } = await import('@/store/useAuthStore');
               const { user } = useAuthStore.getState();
               if (user?.token) {
                 fetchAddresses(user.token);

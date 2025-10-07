@@ -3,7 +3,7 @@ import typography from "@/constants/typography";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/useAuthStore";
-import { ChevronRight, Clock, MapPin, ShoppingBag } from "lucide-react-native";
+import { ChevronRight, Clock, MapPin, ShoppingBag, X } from "lucide-react-native";
 import React, { useEffect, useState, useRef } from "react";
 import {
   SafeAreaView,
@@ -17,6 +17,7 @@ import {
   StatusBar,
   Dimensions,
   Platform,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import TrackingMap from "./TrackingMap";
@@ -27,7 +28,7 @@ export default function OrdersScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const AUTH_TOKEN = "user?.token";
-  console.log(user?.token);
+ 
   
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +42,8 @@ export default function OrdersScreen() {
   const headerAnim = useRef(new Animated.Value(0)).current;
   const ordersAnim = useRef(new Animated.Value(0)).current;
   const { width } = Dimensions.get('window');
+
+  const currentOrder = trackingOrderId ? orders.find(o => o._id === trackingOrderId) : null;
 
   // Extracted fetchOrders so it can be reused in interval
   const fetchOrders = async (showLoading = true) => {
@@ -58,7 +61,7 @@ export default function OrdersScreen() {
       }
       const data = await res.json();
       // The API returns { data: [orders] }
-      console.log(data.data.orders);
+      
       setOrders(Array.isArray(data.data.orders) ? data.data.orders : []);
     } catch (err: any) {
       setFetchError(err.message || "Failed to fetch orders");
@@ -127,7 +130,7 @@ export default function OrdersScreen() {
   };
 
   const handleTrackDelivery = (id: string) => {
-    router.push(`/delivery-tracking/${id}`);
+    setTrackingOrderId(trackingOrderId === id ? null : id);
   };
 
   const getStatusColor = (status: string) => {
@@ -487,7 +490,7 @@ export default function OrdersScreen() {
                             <View style={styles.actionContainer}>
                               <TouchableOpacity
                                 style={styles.trackButton}
-                                onPress={() => setTrackingOrderId(orderId)}
+                                onPress={() => handleTrackDelivery(orderId)}
                                 activeOpacity={0.9}
                               >
                                 <LinearGradient
@@ -496,23 +499,58 @@ export default function OrdersScreen() {
                                   end={{ x: 1, y: 0 }}
                                   style={styles.trackButtonGradient}
                                 >
-                                  <Text style={styles.trackButtonText}>Track Delivery</Text>
+                                  <Text style={styles.trackButtonText}>
+                                    {trackingOrderId === orderId ? "Close Map" : "Track Delivery"}
+                                  </Text>
                                   <ChevronRight size={18} color="#FFFFFF" />
                                 </LinearGradient>
                               </TouchableOpacity>
                             </View>
                           )}
-                          {trackingOrderId === orderId && 
-                          <View style={styles.trackingMapContainer}>
-                            <TrackingMap  />
-                          </View>
-                          }
                         </View>
                       </View>
                     </Animated.View>
                 );
               })}
           </View>
+        )}
+
+        {trackingOrderId && user?.token && user?._id && (
+          <Modal
+            visible={true}
+            animationType="slide"
+            transparent={false}
+            onRequestClose={() => setTrackingOrderId(null)}
+          >
+            <View style={styles.modalContainer}>
+              <LinearGradient
+                colors={["#FFFFFF", "#F8F9FA"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.modalHeader}
+              >
+                <View style={styles.modalHeaderContent}>
+                  <Text style={styles.modalTitle}>
+                    Tracking Delivery - Order {currentOrder?.orderCode || trackingOrderId}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setTrackingOrderId(null)}
+                    style={styles.closeButtonContainer}
+                  >
+                    <X size={24} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+              <View style={styles.modalBody}>
+                <TrackingMap 
+                  token={user.token}
+                  userId={user._id}
+                  orderId={trackingOrderId}
+                  deliveryVehicle={currentOrder?.deliveryVehicle || "Car"}
+                />
+              </View>
+            </View>
+          </Modal>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -807,13 +845,29 @@ const styles = StyleSheet.create({
     color: colors.white,
     marginRight: 8,
   },
-  trackingMapContainer: {
-    marginTop: 16,
-    height: 200,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalHeaderContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    ...typography.heading3,
+    color: colors.black,
+    fontWeight: '600',
+  },
+  closeButtonContainer: {
+    padding: 4,
+  },
+  modalBody: {
+    flex: 1,
   },
 });

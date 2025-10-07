@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useAuthStore } from '@/store/useAuthStore';
 
 type OTPInputRef = TextInput | null;
 
@@ -106,7 +107,6 @@ export default function VerifyScreen() {
         await SecureStore.setItemAsync('userInfo', JSON.stringify(userData));
         
         // Update auth store with logged in user data
-        const { useAuthStore } = await import('@/store/useAuthStore');
         const { setUser } = useAuthStore.getState();
         await setUser(userData);
       }
