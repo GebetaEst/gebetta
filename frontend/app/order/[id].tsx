@@ -77,7 +77,8 @@ export default function OrderDetailScreen() {
   };
   
   const handleViewMap = () => {
-    router.push(`/delivery-tracking/${order?.id}`);
+    // Use replace so Home / previous screen isn't left in navigation stack
+    router.replace(`/delivery-tracking/${order?.id}`);
   };
   
   if (!order || !restaurant) {

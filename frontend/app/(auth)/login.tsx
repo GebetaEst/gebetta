@@ -46,6 +46,8 @@ export default function LoginScreen() {
   const [showResponse, setShowResponse] = useState(false);
   const [responseType, setResponseType] = useState<'success' | 'error'>('success');
   const [showPassword, setShowPassword] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [backgroundImageError, setBackgroundImageError] = useState(false);
 
   const router = useRouter();
   const { login } = useAuthStore();
@@ -97,11 +99,11 @@ export default function LoginScreen() {
         }),
       });
 
-      console.log('📡 Response status:', response);
+      // console.log('📡 Response status:', response);
       // console.log('📡 Response headers:', response.headers);
 
       const data = await response.json();
-      console.log('✅ Server response:', data);
+      console.log('✅ Server response: {login.tsx}', data);
       // console.log('✅ Response structure:', {
       //   hasUser: !!data.data?.user,
       //   hasToken: !!data.token,
@@ -115,7 +117,7 @@ export default function LoginScreen() {
 
       // Store user data in auth store
       if (data.token && data.data?.user) {
-        console.log('✅ Storing user data:', { user: data.data.user, token: data.token });
+        // console.log('✅ Storing user data: {login.tsx}', { user: data.data.user, token: data.token });
         const userData = {
           ...data.data.user,
           token: data.token  // Ensure token is included in user data
@@ -131,19 +133,19 @@ export default function LoginScreen() {
         await SecureStore.setItemAsync('userToken', data.token);
         await SecureStore.setItemAsync('userInfo', JSON.stringify(userData));
         
-        console.log('✅ User data stored successfully');
+        console.log('✅ User data stored successfully {login.tsx}');
       } else {
-        console.error('❌ Missing user data or token in response:', data);
+        console.error('❌ Missing user data or token in response: {login.tsx}', data);
         throw new Error('Invalid response format from server');
       }
 
-      setResponseMessage('✅ Login successful!');
+      setResponseMessage('Login successful!');
       setResponseType('success');
       setShowResponse(true);
 
       setTimeout(() => {
         setShowResponse(false);
-        router.push('/(tabs)');
+        router.replace('/(tabs)');
       }, 2000);
     } catch (error: any) {
       console.error('❌ Error logging in:', error.message);
@@ -178,6 +180,10 @@ export default function LoginScreen() {
         source={require('@/assets/images/background.jpg')}
         style={styles.backgroundImage}
         resizeMode="cover"
+        onError={() => {
+          console.log('❌ Background image failed to load {login.tsx}');
+          setBackgroundImageError(true);
+        }}
       >
         <SafeAreaView style={styles.safeArea}>
           {showResponse && (
@@ -201,11 +207,21 @@ export default function LoginScreen() {
               style={styles.scrollView}
             >
               <View style={styles.logoContainer}>
-                <Image
-                  source={require('@/assets/images/icon.png')}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
+                {!imageError ? (
+                  <Image
+                    source={require('@/assets/images/new.png')}
+                    style={styles.logo}
+                    resizeMode="contain"
+                    onError={() => {
+                      console.log('❌ Logo image failed to load');
+                      setImageError(true);
+                    }}
+                  />
+                ) : (
+                  <View style={styles.logoFallback}>
+                    <Ionicons name="restaurant" size={60} color="#fff" />
+                  </View>
+                )}
                 <Text style={styles.welcomeText}>Welcome to Gebeta</Text>
                 <Text style={styles.subtitleText}>Sign in to your account</Text>
               </View>
@@ -335,9 +351,21 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
+    width: width * 0.43,  // Increased size for bigger screens
+    height: width * 0.43,
+    marginBottom: 14,
+    maxWidth: 240,
+    maxHeight: 240,
+    alignSelf: 'center',
+  },
+  logoFallback: {
     width: 100,
     height: 100,
     marginBottom: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   welcomeText: {
     fontSize: 28,

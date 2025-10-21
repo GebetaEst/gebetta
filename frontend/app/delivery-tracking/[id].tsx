@@ -7,6 +7,7 @@ import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, MapPin, MessageCircle, Navigation, Phone } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
+import { BackHandler } from 'react-native';
 import {
   Alert,
   Dimensions,
@@ -54,6 +55,9 @@ export default function DeliveryTrackingScreen() {
   const router = useRouter();
   const { getOrderById } = useCartStore();
   const mapRef = useRef<any>(null);
+  
+  // Activate hardware back prevention while on this screen
+  usePreventBackNavigation(router);
   
   const order = getOrderById(id);
   const restaurant = restaurants.find(r => r.id === order?.restaurantId);
@@ -220,7 +224,10 @@ export default function DeliveryTrackingScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            // Replace instead of going back so Home isn't reachable via back
+            router.replace('/(tabs)');
+          }}
         >
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
@@ -449,6 +456,25 @@ export default function DeliveryTrackingScreen() {
       </View>
     </View>
   );
+}
+
+// Prevent Android hardware back button from navigating back to previous screens
+// when on the delivery tracking screen. We replace to the tabs root instead.
+// This is a safety-net in case navigation used push elsewhere.
+function usePreventBackNavigation(router: any) {
+  useEffect(() => {
+    const onBackPress = () => {
+      // Replace stack to root tabs (safe place) and consume the event
+      router.replace('/(tabs)');
+      return true; // Prevent default behavior
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
 }
 
 const { width, height } = Dimensions.get("window");

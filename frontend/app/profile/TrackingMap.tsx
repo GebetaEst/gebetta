@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { BackHandler } from 'react-native';
+import { useRouter } from 'expo-router';
 import {
   View,
   StyleSheet,
@@ -70,6 +72,7 @@ interface OrderData {
 }
 
 const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
+  const router = useRouter();
   const [deliveryLocation, setDeliveryLocation] = useState<DeliveryLocation | null>(null);
   const [deliveryPerson, setDeliveryPerson] = useState<DeliveryPerson | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>("Loading...");
@@ -474,6 +477,21 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
       off(orderRef, "value", unsubscribe);
     };
   }, [orderId]);
+
+  // Prevent Android hardware back from returning to a previous Home screen
+  useEffect(() => {
+    const onBackPress = () => {
+      // Replace to tabs root so Home or previous screen isn't reachable
+      router.replace('/(tabs)');
+      return true; // prevent default
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
 
   // Handle user interaction with map (zoom/pan)
   const handleRegionChange = () => {

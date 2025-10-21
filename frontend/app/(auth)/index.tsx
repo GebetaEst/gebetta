@@ -92,7 +92,7 @@ export default function WelcomeScreen() {
 
   const handleGetStarted = () => {
     //  router.push("/(auth)/login");
-      router.push("/(tabs)");
+      router.replace("/(tabs)");
   };
 
 
