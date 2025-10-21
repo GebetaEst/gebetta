@@ -16,11 +16,14 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
+import { useDeliveryTracking } from "@/hooks/useDeliveryTracking";
 
 // Conditionally import MapView to avoid web issues
 let MapView: any = null;
 let Marker: any = null;
+let Polyline: any = null;
 let PROVIDER_GOOGLE: any = null;
 
 // Only import on native platforms
@@ -29,6 +32,7 @@ if (Platform.OS !== "web") {
     const ReactNativeMaps = require("react-native-maps");
     MapView = ReactNativeMaps.default;
     Marker = ReactNativeMaps.Marker;
+    Polyline = ReactNativeMaps.Polyline;
     PROVIDER_GOOGLE = ReactNativeMaps.PROVIDER_GOOGLE;
   } catch (error) {
     console.warn("react-native-maps could not be loaded", error);
@@ -54,8 +58,18 @@ export default function DeliveryTrackingScreen() {
   const order = getOrderById(id);
   const restaurant = restaurants.find(r => r.id === order?.restaurantId);
   
+  // Use Firebase real-time tracking
+  const { 
+    deliveryOrder, 
+    deliveryGuy, 
+    isLoading: isTrackingLoading, 
+    error: trackingError, 
+    currentLocation: firebaseDriverLocation 
+  } = useDeliveryTracking(id);
+  
+  // Use Firebase location if available, fallback to order data, then restaurant location
   const [driverLocation, setDriverLocation] = useState(
-    order?.driverInfo?.currentLocation || restaurant?.location
+    firebaseDriverLocation || order?.driverInfo?.currentLocation || restaurant?.location
   );
   
   const [estimatedTime, setEstimatedTime] = useState<number>(
@@ -64,6 +78,14 @@ export default function DeliveryTrackingScreen() {
 
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
+  
+  // Update driver location when Firebase data changes
+  useEffect(() => {
+    if (firebaseDriverLocation) {
+      console.log('📍 Updating driver location from Firebase:', firebaseDriverLocation);
+      setDriverLocation(firebaseDriverLocation);
+    }
+  }, [firebaseDriverLocation]);
   
   useEffect(() => {
     if (Platform.OS !== "web" && Location) {
@@ -86,27 +108,7 @@ export default function DeliveryTrackingScreen() {
     }
   }, []);
   
-  useEffect(() => {
-    // Simulate driver movement
-    const interval = setInterval(() => {
-      if (order?.status === "out-for-delivery" && driverLocation && order.deliveryAddress?.location) {
-        // Move driver closer to delivery location
-        const deliveryLoc = order.deliveryAddress.location;
-        const newLat = driverLocation.latitude + (deliveryLoc.latitude - driverLocation.latitude) * 0.1;
-        const newLng = driverLocation.longitude + (deliveryLoc.longitude - driverLocation.longitude) * 0.1;
-        
-        setDriverLocation({
-          latitude: newLat,
-          longitude: newLng,
-        });
-        
-        // Update estimated time
-        setEstimatedTime((prev) => Math.max(1, prev - 1));
-      }
-    }, 5000);
-    
-    return () => clearInterval(interval);
-  }, [driverLocation, order]);
+  // No longer need to simulate driver movement - using Firebase real-time data
 
   useEffect(() => {
     // Fit map to show all markers
@@ -170,6 +172,35 @@ export default function DeliveryTrackingScreen() {
     );
   };
   
+  // Show loading state while tracking data loads
+  if (isTrackingLoading) {
+    return (
+      <View style={styles.notFound}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[typography.body, { marginTop: 16 }]}>Loading delivery tracking...</Text>
+      </View>
+    );
+  }
+
+  // Show error if tracking failed
+  if (trackingError) {
+    return (
+      <View style={styles.notFound}>
+        <Text style={typography.heading3}>⚠️ Tracking Not Available</Text>
+        <Text style={[typography.body, { marginTop: 8, textAlign: 'center' }]}>{trackingError}</Text>
+        <Text style={[typography.bodySmall, { marginTop: 16, textAlign: 'center', color: colors.lightText }]}>
+          Don't worry! Your order is still being processed. Tracking will be available once a delivery person accepts your order.
+        </Text>
+        <TouchableOpacity
+          style={[styles.backButton, { marginTop: 24, backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }]}
+          onPress={() => router.back()}
+        >
+          <Text style={[styles.backButtonText, { color: colors.white }]}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   if (!order || !restaurant) {
     return (
       <View style={styles.notFound}>
@@ -217,6 +248,31 @@ export default function DeliveryTrackingScreen() {
               longitudeDelta: 0.05,
             }}
           >
+            {/* Polyline from restaurant to driver (if driver has accepted) */}
+            {driverLocation && restaurant.location && (deliveryOrder?.status === 'Accepted' || deliveryOrder?.status === 'PickedUp' || deliveryOrder?.status === 'InTransit') && Polyline && (
+              <Polyline
+                coordinates={[
+                  restaurant.location,
+                  driverLocation,
+                ]}
+                strokeColor={colors.secondary}
+                strokeWidth={3}
+                lineDashPattern={[5, 5]}
+              />
+            )}
+            
+            {/* Polyline from driver to delivery address (if order picked up) */}
+            {driverLocation && order.deliveryAddress?.location && (deliveryOrder?.status === 'PickedUp' || deliveryOrder?.status === 'InTransit') && Polyline && (
+              <Polyline
+                coordinates={[
+                  driverLocation,
+                  order.deliveryAddress.location,
+                ]}
+                strokeColor={colors.primary}
+                strokeWidth={4}
+              />
+            )}
+
             {/* Restaurant marker */}
             <Marker
               coordinate={restaurant.location}
@@ -241,12 +297,13 @@ export default function DeliveryTrackingScreen() {
               </Marker>
             )}
             
-            {/* Driver marker */}
+            {/* Driver marker with animation */}
             {driverLocation && (
               <Marker
                 coordinate={driverLocation}
-                title={order.driverInfo?.name || "Driver"}
-                description="Your delivery driver"
+                title={deliveryGuy?.deliveryPerson?.name || deliveryOrder?.deliveryPerson?.name || order.driverInfo?.name || "Delivery Driver"}
+                description={`Status: ${deliveryOrder?.status || 'On the way'}`}
+                anchor={{ x: 0.5, y: 0.5 }}
               >
                 <View style={styles.driverMarker}>
                   <Navigation size={24} color={colors.white} />
@@ -276,12 +333,38 @@ export default function DeliveryTrackingScreen() {
             <Text style={styles.locationPermissionText}>Show my location</Text>
           </TouchableOpacity>
         )}
+
+        {/* Real-time tracking indicator */}
+        {deliveryOrder && (
+          <View style={styles.trackingStatusIndicator}>
+            <View style={styles.liveIndicator}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>LIVE</Text>
+            </View>
+            {deliveryOrder.lastLocationUpdate && (
+              <Text style={styles.lastUpdateText}>
+                Updated {new Date(deliveryOrder.lastLocationUpdate).toLocaleTimeString()}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
       
       <View style={styles.content}>
         <View style={styles.statusContainer}>
-          <OrderStatusTracker status={order.status} />
+          <OrderStatusTracker status={deliveryOrder?.status || order.status} />
         </View>
+        
+        {/* Delivery Status Info */}
+        {deliveryOrder && (
+          <View style={styles.deliveryStatusInfo}>
+            <Text style={styles.deliveryStatusLabel}>Current Status</Text>
+            <Text style={styles.deliveryStatusValue}>{deliveryOrder.status}</Text>
+            {deliveryGuy?.isTracking && (
+              <Text style={styles.trackingActiveText}>📍 Location tracking active</Text>
+            )}
+          </View>
+        )}
         
         <View style={styles.estimatedTimeContainer}>
           <Text style={styles.estimatedTimeLabel}>Estimated Arrival</Text>
@@ -290,17 +373,25 @@ export default function DeliveryTrackingScreen() {
           </Text>
         </View>
         
-        {order.status === "out-for-delivery" && order.driverInfo && (
+        {/* Show driver info if available from Firebase or order data */}
+        {((deliveryOrder?.deliveryPerson || deliveryGuy?.deliveryPerson || order.driverInfo) && (order.status === "out-for-delivery" || deliveryOrder?.status)) && (
           <View style={styles.driverContainer}>
             <View style={styles.driverHeader}>
-              <Image
-                source={{ uri: order.driverInfo.photoUrl }}
-                style={styles.driverImage}
-                contentFit="cover"
-              />
+              {order.driverInfo?.photoUrl && (
+                <Image
+                  source={{ uri: order.driverInfo.photoUrl }}
+                  style={styles.driverImage}
+                  contentFit="cover"
+                />
+              )}
               <View style={styles.driverInfo}>
-                <Text style={styles.driverName}>{order.driverInfo.name}</Text>
+                <Text style={styles.driverName}>
+                  {deliveryGuy?.deliveryPerson?.name || deliveryOrder?.deliveryPerson?.name || order.driverInfo?.name || "Delivery Driver"}
+                </Text>
                 <Text style={styles.driverRole}>Your Delivery Driver</Text>
+                {deliveryGuy?.deliveryPerson?.deliveryMethod && (
+                  <Text style={styles.driverVehicle}>🛵 {deliveryGuy.deliveryPerson.deliveryMethod}</Text>
+                )}
               </View>
             </View>
             
@@ -587,5 +678,71 @@ const styles = StyleSheet.create({
   totalValue: {
     ...typography.heading4,
     color: colors.primary,
+  },
+  trackingStatusIndicator: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    backgroundColor: colors.white,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    elevation: 4,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  liveIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#22c55e",
+    marginRight: 6,
+  },
+  liveText: {
+    ...typography.caption,
+    color: "#22c55e",
+    fontWeight: "700",
+    fontSize: 10,
+  },
+  lastUpdateText: {
+    ...typography.caption,
+    color: colors.lightText,
+    fontSize: 10,
+  },
+  deliveryStatusInfo: {
+    backgroundColor: colors.inputBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: "center",
+  },
+  deliveryStatusLabel: {
+    ...typography.bodySmall,
+    color: colors.lightText,
+    marginBottom: 4,
+  },
+  deliveryStatusValue: {
+    ...typography.heading3,
+    color: colors.primary,
+    marginBottom: 8,
+  },
+  trackingActiveText: {
+    ...typography.caption,
+    color: "#22c55e",
+    fontWeight: "600",
+  },
+  driverVehicle: {
+    ...typography.caption,
+    color: colors.lightText,
+    marginTop: 2,
   },
 });

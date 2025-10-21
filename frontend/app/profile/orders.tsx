@@ -43,7 +43,9 @@ export default function OrdersScreen() {
   const ordersAnim = useRef(new Animated.Value(0)).current;
   const { width } = Dimensions.get('window');
 
-  const currentOrder = trackingOrderId ? orders.find(o => o._id === trackingOrderId) : null;
+  const currentOrder = trackingOrderId 
+    ? orders.find(o => o.orderCode === trackingOrderId || o._id === trackingOrderId) 
+    : null;
 
   // Extracted fetchOrders so it can be reused in interval
   const fetchOrders = async (showLoading = true) => {
@@ -291,7 +293,8 @@ export default function OrdersScreen() {
               .map((order) => {
                 // Defensive: fallback for missing fields
                 // Adapted for new order format
-                const orderId = order._id || order.id || "N/A";
+                // Use orderCode for Firebase tracking (matches delivery guy app)
+                const orderId = order.orderCode || order._id || order.id || "N/A";
                 // const orderVerificationCode = order.verification_code || "N/A";
                 // There is no "foodName" at the order level; show first foodName or fallback
                 const orderName =
@@ -543,10 +546,7 @@ export default function OrdersScreen() {
               </LinearGradient>
               <View style={styles.modalBody}>
                 <TrackingMap 
-                  token={user.token}
-                  userId={user._id}
-                  orderId={trackingOrderId}
-                  deliveryVehicle={currentOrder?.deliveryVehicle || "Car"}
+                  orderId={currentOrder?.orderCode || trackingOrderId}
                 />
               </View>
             </View>
