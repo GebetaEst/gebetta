@@ -312,14 +312,13 @@ function ProfileContent() {
             }}
           />
           <Text style={styles.profileName}>
-            {user.firstName} {user.lastName}
+            {user.phone}
           </Text>
           {profileUser?.location && (
             <Text style={styles.profileLocation}>
               <Ionicons name="location-outline" size={14} color={colors.text} /> {profileUser.location}
             </Text>
           )}
-          {profileUser?.bio && <Text style={styles.profileBio}>{profileUser.bio}</Text>}
 
 
 

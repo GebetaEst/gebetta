@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import typography from "@/constants/typography";
+import colors from "@/constants/colors";
 import {
   View,
   Text,
@@ -9,6 +11,7 @@ import {
   Platform,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
+  Animated,
 } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,17 +19,36 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 type OTPInputRef = TextInput | null;
 
-export default function VerifyScreen() {
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+export default function VerifyScreen( { phoneNumber , signUP }: { phoneNumber: string , signUP: boolean } ) {
+  // const { phone } = useLocalSearchParams<{ phone: string }>();
   const router = useRouter();
 
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const inputRefs = useRef<Array<OTPInputRef>>(Array(6).fill(null));
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
-    inputRefs.current[0]?.focus();
+    // Start animation when component mounts
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Focus first input after animation starts
+    setTimeout(() => {
+      inputRefs.current[0]?.focus();
+    }, 300);
   }, []);
 
   useEffect(() => {
@@ -37,11 +59,48 @@ export default function VerifyScreen() {
   }, [otp]);
 
   const handleChange = (value: string, index: number) => {
-    if (value.length > 1) value = value.charAt(value.length - 1);
+    let processedValue = value;
+
+    // Handle paste for the first input (maxLength=6)
+    if (index === 0 && value.length > 1) {
+      if (value.length >= 6 && /^\d{6,}$/.test(value)) {
+        // Extract first 6 digits if more than 6
+        const otpString = value.slice(0, 6);
+        const digits = otpString.split('');
+        setOtp(digits);
+        // Focus the last input
+        inputRefs.current[5]?.focus();
+        return; // Exit early since we've filled all fields
+      } else if (/^\d+$/.test(value)) {
+        // If less than 6 digits pasted into first, fill from start
+        const digits = value.split('').slice(0, 6 - index);
+        const newOtp = [...otp];
+        digits.forEach((digit, i) => {
+          if (index + i < 6) newOtp[index + i] = digit;
+        });
+        setOtp(newOtp);
+        // Focus the next unfilled input
+        const nextIndex = Math.min(index + digits.length, 5);
+        if (nextIndex < 6) {
+          inputRefs.current[nextIndex]?.focus();
+        }
+        return;
+      } else {
+        // Invalid paste, take first digit
+        processedValue = value.charAt(0);
+      }
+    } else if (value.length > 1) {
+      // For other inputs, take last character (in case of any multi-char input)
+      processedValue = value.charAt(value.length - 1);
+    }
+
+    // Standard single digit update
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = processedValue;
     setOtp(newOtp);
-    if (value && index < 5) {
+
+    // Move to next input if filled
+    if (processedValue && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -64,23 +123,24 @@ export default function VerifyScreen() {
 
     try {
       const res = await fetch(
-        'https://gebeta-delivery1.onrender.com/api/v1/users/verifySignupOTP',
+        `https://gebeta-delivery1.onrender.com/api/v1/users/verify${signUP ? 'Signup' : ''}OTP`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone, code: otpCode }),
+          body: JSON.stringify({ phone: phoneNumber, code: otpCode }),
         }
       );
 
       const response = await res.json();
+      console.log('✅ Verify Response:', response);
       
-      console.log('✅ Login Response:', {
-        hasUser: !!response.data?.user,
-        userId: response.data?.user?._id,
-        firstName: response.data?.user?.firstName,
-        profilePicture: response.data?.user?.profilePicture,
-        hasProfilePicture: !!response.data?.user?.profilePicture
-      });
+      // console.log('✅ Login Response:', {
+      //   hasUser: !!response.data?.user,
+      //   userId: response.data?.user?._id,
+      //   firstName: response.data?.user?.firstName,
+      //   profilePicture: response.data?.user?.profilePicture,
+      //   hasProfilePicture: !!response.data?.user?.profilePicture
+      // });
 
       if (!res.ok) throw new Error(response?.message || 'OTP verification failed');
 
@@ -95,7 +155,6 @@ export default function VerifyScreen() {
           firstName: response.data.user.firstName,
           lastName: response.data.user.lastName || '',
           phone: response.data.user.phone,
-          email: response.data.user.email || '',
           profilePicture: response.data.user.profilePicture || '',
           role: response.data.user.role,
           isPhoneVerified: response.data.user.isPhoneVerified,
@@ -126,63 +185,103 @@ export default function VerifyScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <Animated.View 
+      style={[
+        { flex: 1 },
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }
+      ]}
     >
-      <Text style={styles.title}>Verify OTP</Text>
-      <Text style={styles.subtitle}>OTP sent to {phone}</Text>
+      <View
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Text style={styles.title}>Verify OTP</Text>
+        <Text style={styles.subtitle}>OTP sent to {phoneNumber}</Text>
 
-      <View style={styles.otpContainer}>
-        {otp.map((digit, index) => (
-          <TextInput
-            key={index}
-            ref={(ref) => {
-              if (ref) inputRefs.current[index] = ref;
-            }}
-            style={styles.otpInput}
-            keyboardType="number-pad"
-            maxLength={1}
-            value={digit}
-            onChangeText={(text) => handleChange(text, index)}
-            onKeyPress={(e) => handleKeyPress(e, index)}
-            selectTextOnFocus
-          />
-        ))}
+        <View style={styles.otpContainer}>
+          <View style={styles.otpInputContainer}>
+            
+          {otp.map((digit, index) => (
+            <TextInput
+              key={index}
+              ref={(ref) => {
+                if (ref) inputRefs.current[index] = ref;
+              }}
+              style={styles.otpInput}
+              keyboardType="number-pad"
+              maxLength={index === 0 ? 6 : 1}
+              value={digit}
+              onChangeText={(text) => handleChange(text, index)}
+              onKeyPress={(e) => handleKeyPress(e, index)}
+              selectTextOnFocus
+            />
+          ))}
+          </View>
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {success ? <Text style={styles.success}>{success}</Text> : null}
+
+        <TouchableOpacity style={styles.button} onPress={handleVerify}>
+          <Text style={styles.buttonText}>Verify</Text>
+        </TouchableOpacity>
       </View>
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {success ? <Text style={styles.success}>{success}</Text> : null}
-
-      <TouchableOpacity style={styles.button} onPress={handleVerify}>
-        <Text style={styles.buttonText}>Verify</Text>
-      </TouchableOpacity>
-    </KeyboardAvoidingView>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  otpInputContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: "50%",
+    height: 50,
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 15,
+    alignSelf: "center",
+    alignItems: "center",
+  },
   container: {
-    flex: 1,
-    padding: 24,
+    flex: 0.5,
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 12,
+    marginHorizontal: 15,
+    width: "98%",
+    alignSelf: "center",
+    height: "100%",
   },
   title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
+    ...typography.title,
+    marginBottom: 12,
+    fontSize: 27,
+    fontWeight: "bold",
+    color: colors.white,
+    textAlign: "center",
+    lineHeight: 25,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 2, height: 0 },
+    textShadowRadius: 4,
+    letterSpacing: 1,
+
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 24,
-    color: '#666',
+    color: '#fff',
+    zIndex: 1000,
   },
   otpContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     marginBottom: 20,
   },
   otpInput: {
@@ -201,12 +300,15 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 16,
+    width: "60%",
+    alignSelf: "center",
   },
   buttonText: {
     color: '#fff',
     textAlign: 'center',
     fontWeight: 'bold',
     fontSize: 16,
+    width: "100%",
   },
   error: {
     color: 'red',

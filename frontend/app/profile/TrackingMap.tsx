@@ -13,19 +13,20 @@ import {
   Vibration,
 } from "react-native";
 import MapView, { Marker, Region, Polyline } from "react-native-maps";
-import { Truck, Bike, Navigation, MapPin } from "lucide-react-native";
+import { useAuthStore } from "@/store/useAuthStore";
+import { Navigation, MapPin , Navigation2  } from "lucide-react-native";
 import { ref, onValue, off } from 'firebase/database';
 import { database } from '@/firebase';
-import { Audio } from 'expo-av'; 
+import { Audio } from 'expo-av';
 
 const { width, height } = Dimensions.get("window");
-const ICON_SIZE = 32;
 
-const INITIAL_REGION: Region = {
+// Default fallback region (can be a central location or your app's default)
+const DEFAULT_REGION: Region = {
   latitude: 9.0125,
   longitude: 38.7635,
-  latitudeDelta: 0.05,
-  longitudeDelta: 0.05,
+  latitudeDelta: 0.5,
+  longitudeDelta: 0.5,
 };
 
 interface TrackingMapProps {
@@ -73,6 +74,7 @@ interface OrderData {
 
 const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [deliveryLocation, setDeliveryLocation] = useState<DeliveryLocation | null>(null);
   const [deliveryPerson, setDeliveryPerson] = useState<DeliveryPerson | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>("Loading...");
@@ -83,15 +85,21 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
   const [restaurantName, setRestaurantName] = useState<string>("");
   const [estimatedTime, setEstimatedTime] = useState<string>("");
   const [distanceLeft, setDistanceLeft] = useState<string>("");
-  const [routeCoordinates, setRouteCoordinates] = useState<Array<{latitude: number, longitude: number}>>([]);
+  const [routeCoordinates, setRouteCoordinates] = useState<Array<{ latitude: number, longitude: number }>>([]);
   const [showRecenterButton, setShowRecenterButton] = useState(false); // Show recenter button after user interaction
-  const [hasNotified500m, setHasNotified500m] = useState(false);
-  const [hasNotified200m, setHasNotified200m] = useState(false);
-  const [hasNotified100m, setHasNotified100m] = useState(false);
-  const [hasNotifiedArrived, setHasNotifiedArrived] = useState(false);
+  const [initialRegion, setInitialRegion] = useState<Region>(DEFAULT_REGION);
   const mapRef = useRef<MapView>(null);
   const hasInitiallyFitted = useRef(false); // Track if we've done initial fit
   const hasLoadedRoute = useRef(false); // Track if route has been loaded
+  
+  // Use useRef for notification flags to ensure persistence between function calls
+  const hasNotified500m = useRef(false);
+  const hasNotified200m = useRef(false);
+  const hasNotified100m = useRef(false);
+  const hasNotifiedArrived = useRef(false);
+
+
+  // console.log('@@@@@@@@@  user',initialRegion);
 
   // Opens Google Maps for navigation
   const openGoogleMaps = async (lat: number, lng: number) => {
@@ -116,16 +124,11 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
 
   // Get delivery icon based on method
   const getDeliveryIcon = (method?: string) => {
-    switch (method?.toLowerCase()) {
-      case "bicycle":
-      case "bike":
-      case "motor":
-        return <Bike size={ICON_SIZE} color="#DC2626" />;
-      case "car":
-      case "truck":
-      default:
-        return <Truck size={ICON_SIZE} color="#DC2626" />;
-    }
+    return (
+      <View style={{}}>
+        <Text style={styles.deliveryIconText}>🚗</Text>
+      </View>
+    );
   };
 
   // Get status color
@@ -150,11 +153,11 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
     const R = 6371000; // Earth radius in meters
     const dLat = (to.lat - from.lat) * Math.PI / 180;
     const dLon = (to.lng - from.lng) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(from.lat * Math.PI / 180) * Math.cos(to.lat * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(from.lat * Math.PI / 180) * Math.cos(to.lat * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c; // Distance in meters
     return distance;
   };
@@ -172,8 +175,8 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
   };
 
   // Decode polyline from OSRM routing service
-  const decodePolyline = (encoded: string): Array<{latitude: number, longitude: number}> => {
-    const points: Array<{latitude: number, longitude: number}> = [];
+  const decodePolyline = (encoded: string): Array<{ latitude: number, longitude: number }> => {
+    const points: Array<{ latitude: number, longitude: number }> = [];
     let index = 0;
     const len = encoded.length;
     let lat = 0;
@@ -216,7 +219,7 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
       // OSRM uses longitude,latitude format (opposite of Google!)
       const originStr = `${origin.longitude},${origin.latitude}`;
       const destStr = `${destination.lng},${destination.lat}`;
-      
+
       // Using OSRM - completely FREE and no API key required
       const url = `https://router.project-osrm.org/route/v1/driving/${originStr};${destStr}?overview=full&geometries=polyline`;
 
@@ -228,11 +231,11 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
         const route = data.routes[0];
         const points = decodePolyline(route.geometry);
         setRouteCoordinates(points);
-        
+
         // Get actual distance and duration from OSRM
         const distanceKm = (route.distance / 1000).toFixed(1);
         const durationMin = Math.round(route.duration / 60);
-        
+
         console.log(`✅ Route loaded: ${points.length} points, ${distanceKm} km, ${durationMin} min`);
         hasLoadedRoute.current = true;
       } else {
@@ -256,14 +259,24 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
   };
 
   // Calculate estimated time based on distance and speed
-  const calculateEstimatedTime = (from: Location, to: Location) => {
+  const calculateEstimatedTime = (from: Location, to: Location): string => {
+    // Check if locations are the same
+    if (from.lat === to.lat && from.lng === to.lng) {
+      return "Arriving soon";
+    }
+
     const distance = calculateDistance(from, to) / 1000; // Convert to km
-    
+
     // Assume average speed of 20 km/h for delivery
     const timeInHours = distance / 20;
     const timeInMinutes = Math.round(timeInHours * 60);
-    
-    return timeInMinutes > 0 ? `${timeInMinutes} min` : "Arriving soon";
+
+    // Handle edge cases
+    if (timeInMinutes <= 0 || distance === 0) {
+      return "Arriving soon";
+    }
+
+    return `${timeInMinutes} min`;
   };
 
   // Play notification sound and vibrate
@@ -279,14 +292,14 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
       const { sound } = await Audio.Sound.createAsync(
         // Using Expo's system notification sound
         { uri: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' },
-        { shouldPlay: true, volume: 1.0 }
+        { shouldPlay: true, volume: 10.0 }
       ).catch((error: any) => {
         console.log('Sound loading error, using vibration only:', error);
         return { sound: null };
       });
-      
+
       // Vibrate in a pattern: vibrate for 500ms, pause 200ms, vibrate 500ms
-      Vibration.vibrate([0, 500, 200, 500, 200, 500]);
+      Vibration.vibrate([0, 100, 200, 200]);
 
       if (sound) {
         await sound.playAsync();
@@ -310,10 +323,32 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
     );
 
     console.log(`📏 Distance to customer: ${Math.round(distance)}m`);
-
+    
+    // Reset flags when delivery moves away from thresholds
+    // This allows re-notifications if delivery person moves away and comes back
+    if (distance > 600) {
+      // Reset all flags if delivery is far away
+      hasNotified500m.current = false;
+      hasNotified200m.current = false;
+      hasNotified100m.current = false;
+      hasNotifiedArrived.current = false;
+    } else if (distance > 250) {
+      // Reset 200m, 100m, and arrived flags if delivery moves back beyond 250m
+      hasNotified200m.current = false;
+      hasNotified100m.current = false;
+      hasNotifiedArrived.current = false;
+    } else if (distance > 150) {
+      // Reset 100m and arrived flags if delivery moves back beyond 150m
+      hasNotified100m.current = false;
+      hasNotifiedArrived.current = false;
+    } else if (distance > 75) {
+      // Reset arrived flag if delivery moves back beyond 75m
+      hasNotifiedArrived.current = false;
+    }
+    
     // Notify at 500m
-    if (distance <= 500 && distance > 200 && !hasNotified500m) {
-      setHasNotified500m(true);
+    if (distance <= 500 && distance > 200 && !hasNotified500m.current) {
+      hasNotified500m.current = true;
       playNotificationSound();
       Alert.alert(
         "🚚 Delivery Approaching!",
@@ -323,8 +358,8 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
       );
     }
     // Notify at 200m
-    else if (distance <= 200 && distance > 100 && !hasNotified200m) {
-      setHasNotified200m(true);
+    else if (distance <= 200 && distance > 100 && !hasNotified200m.current) {
+      hasNotified200m.current = true;
       playNotificationSound();
       Alert.alert(
         "🎯 Almost There!",
@@ -334,8 +369,8 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
       );
     }
     // Notify at 100m
-    else if (distance <= 100 && distance > 50 && !hasNotified100m) {
-      setHasNotified100m(true);
+    else if (distance <= 100 && distance > 50 && !hasNotified100m.current) {
+      hasNotified100m.current = true;
       playNotificationSound();
       Alert.alert(
         "📍 Very Close!",
@@ -345,8 +380,8 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
       );
     }
     // Notify when arrived (within 50m)
-    else if (distance <= 50 && !hasNotifiedArrived) {
-      setHasNotifiedArrived(true);
+    else if (distance <= 50 && !hasNotifiedArrived.current) {
+      hasNotifiedArrived.current = true;
       playNotificationSound();
       Alert.alert(
         "🎉 Delivery Arrived!",
@@ -381,34 +416,34 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
             // Use destinationLocation first, then fall back to customerLocation
             const destinationLoc = orderData.destinationLocation || orderData.customerLocation;
 
-             // Calculate estimated time and distance if we have destination location
-             if (destinationLoc) {
-               const from = { 
-                 lat: orderData.deliveryLocation.latitude, 
-                 lng: orderData.deliveryLocation.longitude 
-               };
-               const eta = calculateEstimatedTime(from, destinationLoc);
-               setEstimatedTime(eta);
+            // Calculate estimated time and distance if we have destination location
+            if (destinationLoc) {
+              const from = {
+                lat: orderData.deliveryLocation.latitude,
+                lng: orderData.deliveryLocation.longitude
+              };
+              const eta = calculateEstimatedTime(from, destinationLoc);
+              setEstimatedTime(eta);
 
-               // Calculate and display distance left
-               const distance = calculateDistance(from, destinationLoc);
-               const formattedDistance = formatDistance(distance);
-               setDistanceLeft(formattedDistance);
+              // Calculate and display distance left
+              const distance = calculateDistance(from, destinationLoc);
+              const formattedDistance = formatDistance(distance);
+              setDistanceLeft(formattedDistance);
 
-               // Load route ONLY ONCE when tracking starts
-               if (!hasLoadedRoute.current) {
-                 getRouteFromOSRM(orderData.deliveryLocation, destinationLoc);
-               }
+              // Load route ONLY ONCE when tracking starts
+              if (!hasLoadedRoute.current) {
+                getRouteFromOSRM(orderData.deliveryLocation, destinationLoc);
+              }
 
-               // Check proximity and send notifications if delivery is approaching
-               checkProximityAndNotify(orderData.deliveryLocation, destinationLoc);
-             }
+              // Check proximity and send notifications if delivery is approaching
+              checkProximityAndNotify(orderData.deliveryLocation, destinationLoc);
+            }
 
             // Animate map to show all markers - ONLY on initial load
             // After that, let user control the zoom/pan for better live tracking
             if (
-              mapRef.current && 
-              orderData.restaurantLocation && 
+              mapRef.current &&
+              orderData.restaurantLocation &&
               destinationLoc &&
               !hasInitiallyFitted.current
             ) {
@@ -417,12 +452,12 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
                 { latitude: orderData.deliveryLocation.latitude, longitude: orderData.deliveryLocation.longitude },
                 { latitude: destinationLoc.lat, longitude: destinationLoc.lng },
               ];
-              
+
               mapRef.current.fitToCoordinates(coordinates, {
                 edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
                 animated: true,
               });
-              
+
               // Mark that we've done the initial fit
               hasInitiallyFitted.current = true;
             }
@@ -478,6 +513,21 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
     };
   }, [orderId]);
 
+  // Set initial region based on user's location from auth store
+  useEffect(() => {
+    if (user?.addresses?.[0]?.coordinates) {
+      const { lng, lat } = user?.addresses?.[0]?.coordinates;
+      const userRegion: Region = {
+        latitude: lat,
+        longitude: lng,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
+      setInitialRegion(userRegion);
+      console.log('📍999999999 Set initial region from user location:', { lat, lng });
+    } 
+  }, [user]);
+
   // Prevent Android hardware back from returning to a previous Home screen
   useEffect(() => {
     const onBackPress = () => {
@@ -509,7 +559,7 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
         { latitude: deliveryLocation.latitude, longitude: deliveryLocation.longitude },
         { latitude: customerLocation.lat, longitude: customerLocation.lng },
       ];
-      
+
       mapRef.current.fitToCoordinates(coordinates, {
         edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
         animated: true,
@@ -522,81 +572,90 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
       <MapView
         ref={mapRef}
         style={styles.map}
-        initialRegion={INITIAL_REGION}
+        initialRegion={initialRegion}
         showsUserLocation={true}
-        showsMyLocationButton={true}
-        showsTraffic={false}
+        showsMyLocationButton={false}
+        showsTraffic={true}
         onRegionChangeComplete={handleRegionChange}
         onPanDrag={handleRegionChange}
       >
-         {/* Restaurant/Pickup Location - START POINT */}
-         {restaurantLocation && (
-           <Marker
-             coordinate={{
-               latitude: restaurantLocation.lat,
-               longitude: restaurantLocation.lng,
-             }}
-             title={restaurantName || "Restaurant"}
-             description="🏪 Pickup Location (Start)"
-           >
-             <View style={styles.restaurantMarker}>
-               <MapPin size={30} color="#FFFFFF" />
-               <Text style={styles.markerLabel}>START</Text>
-             </View>
-           </Marker>
-         )}
+        {/* Restaurant/Pickup Location - START POINT */}
+        {restaurantLocation && (
+          <Marker
+            coordinate={{
+              latitude: restaurantLocation.lat,
+              longitude: restaurantLocation.lng,
+            }}
+            title={restaurantName || "Restaurant"}
+            description="🏪 Pickup Location (Start)"
+          >
+            <View style={styles.restaurantMarker}>
+              <View style={{transform: [{ rotate: '180deg' }]}}>
+                <Navigation2 size={30} color="blue" />
+              </View>
 
-         {/* Delivery Guy Current Location - MOVING BETWEEN START AND END */}
-         {deliveryLocation && (
-           <Marker
-             coordinate={deliveryLocation}
-             title={deliveryPerson?.name || "Delivery Person"}
-             description={`🚚 ${orderStatus} • ${deliveryPerson?.deliveryMethod || "Vehicle"}`}
-             anchor={{ x: 0.5, y: 0.5 }}
-           >
-             <View style={styles.deliveryMarker}>
-               {getDeliveryIcon(deliveryPerson?.deliveryMethod)}
-               <View style={styles.pulseCircle} />
-             </View>
-           </Marker>
-         )}
+              <Text style={styles.markerLabel}>START</Text>
+            </View>
+          </Marker>
+        )}
 
-         {/* Customer/Destination Location - END POINT */}
-         {customerLocation && (
-           <Marker
-             coordinate={{
-               latitude: customerLocation.lat,
-               longitude: customerLocation.lng,
-             }}
-             title="Delivery Destination"
-             description="📍 Your Location (End)"
-           >
-             <View style={styles.destinationMarker}>
-               <MapPin size={30} color="#FFFFFF" />
-               <Text style={styles.markerLabel}>END</Text>
-             </View>
-           </Marker>
-         )}
+        {/* Delivery Guy Current Location - MOVING BETWEEN START AND END */}
+        {deliveryLocation && (
+          <Marker
+            coordinate={deliveryLocation}
+            title={deliveryPerson?.name || "Delivery Person"}
+            description={`🚚 ${orderStatus} • ${deliveryPerson?.deliveryMethod || "Vehicle"}`}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            {/* <View style={{ width: 20, height: 20, alignItems: 'center', justifyContent: 'center', position: 'relative' }}> */}
+              {/* <View style={{width: 20, height: 20, backgroundColor: 'red', borderRadius: 10, transform: [{ rotate: '0deg' }]}} /> */}
+              {/* <View style={styles.deliveryMarkerContainer}> */}
+                {/* <View style={styles.deliveryMarker}> */}
+                  {getDeliveryIcon(deliveryPerson?.deliveryMethod)}
+                {/* </View> */}
+              {/* </View> */}
+            {/* </View> */}
+          </Marker>
+        )}
 
-         {/* Route from delivery guy to customer - Using actual road route */}
-         {routeCoordinates.length > 0 && (
-           <Polyline
-             coordinates={routeCoordinates}
-             strokeColor="#2196F3"
-             strokeWidth={4}
-             lineDashPattern={[1, 0]} // Solid line for actual route
-           />
-         )}
+        {/* Customer/Destination Location - END POINT */}
+        {customerLocation && (
+          <Marker
+            coordinate={{
+              latitude: customerLocation.lat,
+              longitude: customerLocation.lng,
+            }}
+            title="Delivery Destination"
+            description="📍 Your Location (End)"
+          >
+            <View style={styles.destinationMarker}>
+              <MapPin size={30}  color="#000" />
+              <Text style={styles.markerLabel}>END</Text>
+            </View>
+          </Marker>
+        )}
+
+        {/* Route from delivery guy to customer - Using actual road route */}
+        {routeCoordinates.length > 0 && (
+          <Polyline
+            coordinates={routeCoordinates}
+            strokeColor="#2196F3"
+            strokeWidth={4}
+            lineDashPattern={[1, 0]} // Solid line for actual route
+          />
+        )}
       </MapView>
 
       {/* Status Badge */}
       <View style={styles.statusContainer}>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(orderStatus) }]}>
-          <Text style={styles.statusText}>{orderStatus}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: "#666" }]}>
+          <Text style={styles.statusText}>{deliveryPerson?.name}</Text>
+          <Text style={styles.driverPhone}> ☎️{deliveryPerson?.phone}  </Text>
+
         </View>
-        {lastUpdate && (
+        {/* {lastUpdate && (
           <Text style={styles.lastUpdateText}>Updated: {lastUpdate}</Text>
-        )}
+        )} */}
         {distanceLeft && orderStatus !== "Delivered" && (
           <Text style={styles.distanceText}>📍 {distanceLeft} away</Text>
         )}
@@ -618,19 +677,14 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
       )}
 
       {/* Delivery Person Info Card */}
-      {deliveryPerson && (
+      {/* {deliveryPerson && (
         <View style={styles.driverCard}>
           <Text style={styles.driverTitle}>Your Delivery Person</Text>
           <Text style={styles.driverName}>{deliveryPerson.name}</Text>
           <Text style={styles.driverPhone}>📞 {deliveryPerson.phone}</Text>
-          <Text style={styles.driverMethod}>
-            🚚 {deliveryPerson.deliveryMethod}
-          </Text>
-          {restaurantName && (
-            <Text style={styles.restaurantText}>🏪 From: {restaurantName}</Text>
-          )}
+          
         </View>
-      )}
+      )} */}
 
       {/* Open in Google Maps Button */}
       {deliveryLocation && (
@@ -679,31 +733,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deliveryMarker: {
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 30,
-    borderWidth: 3,
-    borderColor: '#DC2626',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 5,
-    elevation: 8,
+  deliveryMarkerContainer: {
+    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  deliveryMarker: {
+    backgroundColor: '#FFFFFF',
+    // padding: 10,
+    // borderRadius: 35,
+    // borderWidth: 14,
+    borderColor: '#DC2626',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+
+   
+  },
+  deliveryIconContainer: {
+    backgroundColor: '#DC2626',
+    width: 20,
+    height: 20,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+    transform: [{ rotate: '0deg' }],
+    // Add a small triangle at the bottom to make it look like a pin
+    position: 'relative',
+  },
+  deliveryIconText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   pulseCircle: {
     position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#DC2626',
-    opacity: 0.2,
-    zIndex: -1,
+    width: 280,
+    height: 280,
+    borderRadius: 90,
+    backgroundColor: '#ffffff',
+    opacity: 1,
+    padding:10
   },
   markerLabel: {
-    fontSize: 10,
+    // fontSize:(Dimensions.get('window').width < 320 ? 10 : 12) ,
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginTop: 2,
@@ -789,7 +873,7 @@ const styles = StyleSheet.create({
   },
   driverPhone: {
     fontSize: 14,
-    color: "#666",
+    color: "#ffffff",
     marginBottom: 3,
   },
   driverMethod: {

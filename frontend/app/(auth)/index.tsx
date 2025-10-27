@@ -91,8 +91,8 @@ export default function WelcomeScreen() {
   }, []);
 
   const handleGetStarted = () => {
-    //  router.push("/(auth)/login");
-      router.replace("/(tabs)");
+     router.push("/(auth)/login");
+      // router.replace("/(tabs)");
   };
 
 
@@ -195,9 +195,7 @@ export default function WelcomeScreen() {
               Discover authentic Ethiopian flavors
             </Text>
             
-            <Text style={styles.description}>
-              Experience traditional Ethiopian cuisine made with love and authentic recipes.
-            </Text>
+            
           </Animated.View>
 
           {/* Features Section */}
@@ -285,7 +283,6 @@ export default function WelcomeScreen() {
                   activeOpacity={0.8}
                 >
                   <Text style={styles.getStartedButtonText}>Get Started</Text>
-                  <Ionicons name="arrow-forward" size={16} color={colors.white} />
                 </TouchableOpacity>
               )}
             </View>
@@ -383,14 +380,14 @@ const styles = StyleSheet.create({
   },
 
   featuresSection: {
-    marginTop: 60,
+    marginTop: 50,
     paddingHorizontal: 24,
   },
   featuresHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 12,
   },
   featuresTitle: {
     ...typography.heading2,
@@ -419,19 +416,22 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   carouselContainer: {
-    height: 280,
+    height: 250,
     marginBottom: 4,
   },
   carouselCard: {
     width: Dimensions.get('window').width - 48, // Full width minus padding
     paddingHorizontal: 12,
+    transform: [{ translateY: 10 }],    
+    
   },
   cardIndicators: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     marginBottom: 4,
+    
   },
   indicator: {
     width: 8,
@@ -486,6 +486,10 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontSize: 16,
     fontWeight: "600",
+    justifyContent: 'center',
+    alignItems: 'center',
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
   featureCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',

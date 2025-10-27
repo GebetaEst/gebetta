@@ -2,7 +2,7 @@ import colors from "@/constants/colors";
 import { Stack } from "expo-router";
 import React from "react";
 import { ImageBackground, StyleSheet, View } from "react-native";
-
+import { SafeAreaView } from "react-native-safe-area-context";
 const HeaderBackground = () => (
   <View style={styles.headerContainer}>
     <ImageBackground
@@ -50,12 +50,16 @@ export default function AuthLayout() {
         name="verify"
         options={{
           title: "Verify Phone",
+          headerShown: false,
+
         }}
       />
       <Stack.Screen
         name="restaurant-owner-signup"
         options={{
           title: "Restaurant Owner Signup",
+          headerShown: false,
+
         }}
       />
     </Stack>

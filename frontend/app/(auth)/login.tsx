@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useAuthStore } from '@/store/useAuthStore';
+import VerifyScreen from './verify';
 
 type Country = {
   name: string;
@@ -47,6 +48,7 @@ export default function LoginScreen() {
   const [responseType, setResponseType] = useState<'success' | 'error'>('success');
   const [showPassword, setShowPassword] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [showOTPPage, setShowOTPPage] = useState(true);
   const [backgroundImageError, setBackgroundImageError] = useState(false);
 
   const router = useRouter();
@@ -64,7 +66,7 @@ export default function LoginScreen() {
     }
 
     // Validate password
-    if (!password || password.length < 6) {
+    if (!password ) {
       setPasswordError('Password must be at least 6 characters');
       isValid = false;
     } else {
@@ -82,10 +84,10 @@ export default function LoginScreen() {
     const cleanedNumber = phoneNumber.replace(/\D/g, '').replace(/^0+/, '');
     const formattedPhone = `${selectedCountry.dialCode}${cleanedNumber}`.replace('+', '');
 
-    console.log('🔐 Attempting login with:', {
-      phone: formattedPhone,
-      passwordLength: password.length
-    });
+    // console.log('🔐 Attempting login with:', {
+    //   phone: formattedPhone,
+    //   passwordLength: password.length
+    // });
 
     try {
       const response = await fetch('https://gebeta-delivery1.onrender.com/api/v1/users/login', {
@@ -99,20 +101,22 @@ export default function LoginScreen() {
         }),
       });
 
-      // console.log('📡 Response status:', response);
-      // console.log('📡 Response headers:', response.headers);
-
+      
       const data = await response.json();
-      console.log('✅ Server response: {login.tsx}', data);
-      // console.log('✅ Response structure:', {
-      //   hasUser: !!data.data?.user,
-      //   hasToken: !!data.token,
-      //   userKeys: data.data?.user ? Object.keys(data.data.user) : [],
-      //   tokenType: typeof data.token
-      // });
+      console.log('✅✅✅✅✅ Server response: {login.tsx}', data);
+      
 
       if (!response.ok) {
         throw new Error(data?.message || 'Login failed');
+      }
+
+      if (data.data?.message.includes('OTP sent to your')){
+        setShowOTPPage(false)
+        return;
+      }
+      if (!data.data.user){
+        setShowOTPPage(false)
+        return;
       }
 
       // Store user data in auth store
@@ -139,7 +143,7 @@ export default function LoginScreen() {
         throw new Error('Invalid response format from server');
       }
 
-      setResponseMessage('Login successful!');
+      setResponseMessage('Successful!');
       setResponseType('success');
       setShowResponse(true);
 
@@ -185,6 +189,7 @@ export default function LoginScreen() {
           setBackgroundImageError(true);
         }}
       >
+          {showOTPPage && (
         <SafeAreaView style={styles.safeArea}>
           {showResponse && (
             <View
@@ -193,126 +198,131 @@ export default function LoginScreen() {
                 responseType === 'success' ? styles.successBanner : styles.errorBanner,
               ]}
             >
-              <Text style={styles.responseText}>{responseMessage}</Text>
+              <Text style={styles.responseText}>{responseMessage} ok</Text>
             </View>
           )}
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? -100 : 0}
-          >
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-              style={styles.scrollView}
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.container}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? -100 : 0}
             >
-              <View style={styles.logoContainer}>
-                {!imageError ? (
-                  <Image
-                    source={require('@/assets/images/new.png')}
-                    style={styles.logo}
-                    resizeMode="contain"
-                    onError={() => {
-                      console.log('❌ Logo image failed to load');
-                      setImageError(true);
-                    }}
-                  />
-                ) : (
-                  <View style={styles.logoFallback}>
-                    <Ionicons name="restaurant" size={60} color="#fff" />
-                  </View>
-                )}
-                <Text style={styles.welcomeText}>Welcome to Gebeta</Text>
-                <Text style={styles.subtitleText}>Sign in to your account</Text>
-              </View>
-
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Sign In</Text>
-                <Text style={styles.cardSubtitle}>Enter your phone number and password</Text>
-
-                <View style={styles.phoneInputContainer}>
-                  <TouchableOpacity
-                    style={styles.countryPicker}
-                    onPress={() => setShowCountryPicker(!showCountryPicker)}
-                  >
-                    <Text style={styles.flag}>{selectedCountry.flag}</Text>
-                    <Text style={styles.dialCodeText}>{selectedCountry.dialCode}</Text>
-                    <Ionicons name="chevron-down" size={16} color="#666" />
-                  </TouchableOpacity>
-
-                  <TextInput
-                    style={[styles.input, phoneError ? styles.inputError : null]}
-                    placeholder="Phone number"
-                    placeholderTextColor="#999"
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    keyboardType="phone-pad"
-                    maxLength={15}
-                  />
-                </View>
-
-                {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
-
-                <View style={styles.passwordInputContainer}>
-                  <TextInput
-                    style={[styles.passwordInput, passwordError ? styles.inputError : null]}
-                    placeholder="Password"
-                    placeholderTextColor="#999"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeIcon}
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    <Ionicons 
-                      name={showPassword ? "eye-off" : "eye"} 
-                      size={20} 
-                      color="#666" 
+              <View
+                style={styles.scrollContent}
+              >
+                <View style={styles.logoContainer}>
+                  {!imageError ? (
+                    <Image
+                      source={require('@/assets/images/new.png')}
+                      style={styles.logo}
+                      resizeMode="contain"
+                      onError={() => {
+                        console.log('❌ Logo image failed to load');
+                        setImageError(true);
+                      }}
                     />
-                  </TouchableOpacity>
-                </View>
-
-                {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
-
-                {showCountryPicker && (
-                  <View style={styles.countryList}>{countries.map(renderCountryItem)}</View>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.button, loading && styles.buttonDisabled]}
-                  onPress={handleLogin}
-                  disabled={loading}
-                  activeOpacity={0.8}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.buttonText}>Sign In</Text>
+                    <View style={styles.logoFallback}>
+                      <Ionicons name="restaurant" size={60} color="#fff" />
+                    </View>
                   )}
-                </TouchableOpacity>
-
-                <View style={styles.linksContainer}>
-                  <TouchableOpacity onPress={() => router.push('/(auth)/verify')}>
-                    <Text style={styles.linkText}>Forgot Password?</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => router.push('/(auth)/restaurant-owner-signup')}>
-                    <Text style={styles.linkText}>Create Account</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.welcomeText}>Welcome to Gebeta</Text>
                 </View>
 
-                <Text style={styles.termsText}>
-                  By signing in, you agree to our{' '}
-                  <Text style={styles.linkText}>Terms of Service</Text> and{' '}
-                  <Text style={styles.linkText}>Privacy Policy</Text>
-                </Text>
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Sign In</Text>
+                  <Text style={styles.cardSubtitle}>Enter your phone number and password</Text>
+
+                  <View style={styles.phoneInputContainer}>
+                    <TouchableOpacity
+                      style={styles.countryPicker}
+                      onPress={() => setShowCountryPicker(!showCountryPicker)}
+                    >
+                      <Text style={styles.flag}>{selectedCountry.flag}</Text>
+                      <Text style={styles.dialCodeText}>{selectedCountry.dialCode}</Text>
+                      <Ionicons name="chevron-down" size={16} color="black" />
+                    </TouchableOpacity>
+
+                    <TextInput
+                      style={[styles.input, phoneError ? styles.inputError : null]}
+                      placeholder="Phone number"
+                      placeholderTextColor="#999"
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                    />
+                  </View>
+
+                  {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
+
+                  <View style={styles.passwordInputContainer}>
+                    <TextInput
+                      style={[styles.passwordInput, passwordError ? styles.inputError : null]}
+                      placeholder="Password"
+                      placeholderTextColor="#999"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeIcon}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Ionicons 
+                        name={showPassword ? "eye-off" : "eye"} 
+                        size={20} 
+                        color="#666" 
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+
+                  {showCountryPicker && (
+                    <ScrollView style={styles.countryScrollView} nestedScrollEnabled={true}>
+                      <View style={styles.countryList}>{countries.map(renderCountryItem)}</View>
+                    </ScrollView>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.button, loading && styles.buttonDisabled]}
+                    onPress={handleLogin}
+                    disabled={loading}
+                    activeOpacity={0.8}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.buttonText}>Sign In</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={styles.linksContainer}>
+                    <TouchableOpacity onPress={() => router.push('/(auth)/verify')}>
+                      <Text style={styles.linkText}>Forgot Password?</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.push('/(auth)/restaurant-owner-signup')}>
+                      <Text style={styles.linkText}>Create Account</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={styles.termsText}>
+                    By signing in, you agree to our{' '}
+                    <Text style={styles.linkText}>Terms of Service</Text> and{' '}
+                    <Text style={styles.linkText}>Privacy Policy</Text>
+                  </Text>
+                </View>
               </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
+          )}
       </ImageBackground>
+      {!showOTPPage &&
+      <View style={styles.verifyContainer}>
+        <VerifyScreen phoneNumber={phoneNumber} signUP={false}/>
+      </View>
+      }
     </View>
   );
 }
@@ -320,6 +330,14 @@ export default function LoginScreen() {
 const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
+  verifyContainer: {
+    position: "absolute",
+    marginHorizontal: 15,
+    alignSelf: "center",
+    top: height * 0.18, // 18% from top instead of fixed 150
+    height: height * 0.85, // 85% of screen height instead of fixed 700
+    width: width * 0.9, // 90% of screen width
+  },
   fullScreen: {
     flex: 1,
     width: width,
@@ -348,12 +366,12 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 10,
   },
   logo: {
     width: width * 0.43,  // Increased size for bigger screens
     height: width * 0.43,
-    marginBottom: 14,
+    marginTop: 10,
     maxWidth: 240,
     maxHeight: 240,
     alignSelf: 'center',
@@ -431,22 +449,22 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    padding: 16,
+    padding: 10,
     borderTopRightRadius: 12,
     borderBottomRightRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     borderLeftWidth: 0,
     fontSize: 16,
-    color: '#333',
+    // color: '#333',
   },
   passwordInputContainer: {
     position: 'relative',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   passwordInput: {
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    padding: 16,
+    padding: 10,
     paddingRight: 50,
     borderRadius: 12,
     borderWidth: 1,
@@ -457,7 +475,7 @@ const styles = StyleSheet.create({
   eyeIcon: {
     position: 'absolute',
     right: 16,
-    top: 16,
+    top: 10,
     padding: 4,
   },
   inputError: {
@@ -469,7 +487,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: 15,
     marginBottom: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
@@ -488,13 +506,14 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#ff4444',
     fontSize: 13,
-    marginTop: 4,
+    marginTop: 0,
+    marginBottom: 10,
     marginLeft: 4,
   },
   linksContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 0,
   },
   termsText: {
     fontSize: 12,
@@ -504,18 +523,19 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   linkText: {
-    color: '#FF6B6B',
+    color: '#185AA1',
     textDecorationLine: 'underline',
     fontSize: 14,
   },
   countryList: {
-    maxHeight: 200,
+    maxHeight: 220,
     backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e0e0e0',
     marginTop: 4,
     overflow: 'hidden',
+    
   },
   countryItem: {
     flexDirection: 'row',
@@ -536,30 +556,46 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   responseBanner: {
-    padding: 12,
-    borderRadius: 8,
-    position: 'absolute',
-    top: 40,
-    left: 20,
-    right: 20,
-    zIndex: 1000,
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
+    width: '70%',
+    padding: 6,
+    borderRadius: 8,
+    position: 'absolute',
+    top: 280,
+    left: 'auto',
+    right: 'auto',
+    zIndex: 1000,
+    
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 6,
+    borderWidth: 2,
+    borderColor: 'rgba(141, 139, 139, 0.71)',
   },
   successBanner: {
-    backgroundColor: '#4BB543', // Green
+    backgroundColor: 'rgba(75, 181, 67, 0.9)',
+
   },
   errorBanner: {
-    backgroundColor: '#FF4C4C', // Red
+    backgroundColor: 'rgba(255, 76, 76, 0.9)',
   },
   responseText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 20,
     textAlign: 'center',
+    opacity: 1,
+  },
+  countryScrollView: {
+    width: '100%',
+    maxHeight: 150,
+    zIndex: 5000,
+    position: 'absolute',
+    top: 150,
+    left: 20,
+    right: 20,
   },
 });

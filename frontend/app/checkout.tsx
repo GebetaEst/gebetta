@@ -61,31 +61,31 @@ export default function CheckoutScreen() {
     clearCart,
   } = useCartStore();
   const { user } = useAuthStore();
-  
+
   // State for addresses from API
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
-  
+
   console.log(user?.token)
-  
+
   // Helper function to get address ID
   const getAddressId = (address: Address) => address?._id || null;
-  
+
   // Helper function to get address display name
   const getAddressDisplayName = (address: Address) => {
     return address.Name || 'Address';
   };
-  
+
   // Helper function to get address type/label
   const getAddressType = (address: Address) => {
     return address.label || 'Address';
   };
-  
+
   // Helper function to get address details
   const getAddressDetails = (address: Address) => {
     return address.additionalInfo || null;
   };
-  
+
   // Helper function to get address coordinates
   const getAddressCoordinates = (address: Address) => {
     return address.coordinates || null;
@@ -94,7 +94,7 @@ export default function CheckoutScreen() {
   // Function to fetch addresses from API
   const fetchAddresses = async () => {
     if (!user?.token) return;
-    
+
     setIsLoadingAddresses(true);
     try {
       const response = await fetch("https://gebeta-delivery1.onrender.com/api/v1/users/myAddresses", {
@@ -108,7 +108,7 @@ export default function CheckoutScreen() {
       if (response.ok) {
         const data = await response.json();
         console.log("Addresses fetched:", data);
-        
+
         // Assuming the API returns addresses in data.addresses or directly in data
         const addressList = data.addresses || data.data || data || [];
         setAddresses(addressList);
@@ -140,9 +140,9 @@ export default function CheckoutScreen() {
   const [orderDescription, setOrderDescription] = useState("");
   const [APIDeliveryFee, setAPIDeliveryFee] = useState(0);
   const [deliveryFeeDisplay, setDeliveryFeeDisplay] = useState(0);
-  
+
   // Location tracking states
-  const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number, longitude: number } | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationRefused, setLocationRefused] = useState(false);
@@ -151,7 +151,7 @@ export default function CheckoutScreen() {
   const subtotal = getCartSubtotal();
   const deliveryFee = getDeliveryFee();
   const tax = getTax();
-  
+
   // Calculate delivery fee from API based on vehicle type
   const getAPIDeliveryFee = () => {
     if (serviceType !== "delivery") return 0;
@@ -160,7 +160,7 @@ export default function CheckoutScreen() {
     if (vehicleType === "Motorcycle") return APIDeliveryFee.Motor?.deliveryFee || 0;
     return 0;
   };
-  
+
   const apiDeliveryFee = getAPIDeliveryFee();
   const total = getCartTotal() + tip + apiDeliveryFee;
 
@@ -170,7 +170,7 @@ export default function CheckoutScreen() {
   const getCurrentLocation = async () => {
     try {
       // Show confirmation alert first
-      return new Promise<{latitude: number, longitude: number} | null>((resolve) => {
+      return new Promise<{ latitude: number, longitude: number } | null>((resolve) => {
         Alert.alert(
           "Location Access Required",
           "",
@@ -190,7 +190,7 @@ export default function CheckoutScreen() {
               onPress: async () => {
                 try {
                   setIsGettingLocation(true);
-                  
+
                   // Check if location services are enabled
                   const isLocationEnabled = await Location.hasServicesEnabledAsync();
                   if (!isLocationEnabled) {
@@ -234,9 +234,9 @@ export default function CheckoutScreen() {
                   setCurrentLocation(coords);
                   setLocationRefused(false); // Reset location refused state when location is obtained
                   console.log("Current location obtained:", coords);
-                  
-                  
-                  
+
+
+
                   setIsGettingLocation(false);
                   resolve(coords);
                 } catch (error) {
@@ -283,7 +283,7 @@ export default function CheckoutScreen() {
         console.warn("Error checking location permission:", error);
       }
     };
-    
+
     checkLocationPermission();
   }, [addresses, serviceType]);
 
@@ -295,13 +295,13 @@ export default function CheckoutScreen() {
     if (serviceType !== "delivery" || !selectedAddress) {
       return;
     }
-    
+
     // Find the selected address from the addresses array
     const address = addresses.find(addr => getAddressId(addr) === selectedAddress);
     if (!address) {
       return 0;
     }
-    
+
     const deliveryPayload = {
       restaurantId: restaurantId,
       destination: {
@@ -309,7 +309,7 @@ export default function CheckoutScreen() {
         lng: address.coordinates.lng
       }
     }
-    
+
     try {
       const deliveryResponse = await fetch("https://gebeta-delivery1.onrender.com/api/v1/orders/estimate-delivery-fee", {
         method: "POST",
@@ -322,11 +322,11 @@ export default function CheckoutScreen() {
       const deliveryData = await deliveryResponse.json();
       // console.log("$$$$$$ Delivery data:", deliveryData);
       setAPIDeliveryFee(deliveryData.data);
-      
+
       console.log("$$$$$$ APIDeliveryFee:", APIDeliveryFee);
       return deliveryData.data.deliveryFee;
 
-    } 
+    }
     catch (error) {
       console.error("Error estimating delivery fee:", error);
       return 0;
@@ -335,9 +335,9 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     handelDeliveryFee();
-  }, [selectedAddress , serviceType])
-  
-  
+  }, [selectedAddress, serviceType])
+
+
   const handlePlaceOrder = async () => {
     setIsProcessing(true);
     let result: any = null;
@@ -364,12 +364,12 @@ export default function CheckoutScreen() {
 
       // Get current phone location for all order types
       let phoneLocation = currentLocation;
-      
+
       // Only try to get location if we don't have it and user hasn't refused
       if (!phoneLocation && !locationRefused) {
         console.log("Getting current location for order...");
         phoneLocation = await getCurrentLocation();
-        
+
         if (!phoneLocation) {
           // User refused location or location failed
           if (serviceType === "delivery") {
@@ -400,8 +400,8 @@ export default function CheckoutScreen() {
           const addressCoords = getAddressCoordinates(selectedAddressData);
           if (addressCoords) {
             destinationLocation = {
-              lat: addressCoords.lat ,
-              lng: addressCoords.lng 
+              lat: addressCoords.lat,
+              lng: addressCoords.lng
             };
           } else {
             // Fallback to phone location if address doesn't have coordinates
@@ -435,8 +435,8 @@ export default function CheckoutScreen() {
           serviceType === "delivery"
             ? "Delivery"
             : serviceType === "pickup"
-            ? "Pickup"
-            : "Dine-in",
+              ? "Pickup"
+              : "Dine-in",
         // Include exact phone location if available
         ...(phoneLocation && {
           phoneLocation: {
@@ -453,9 +453,9 @@ export default function CheckoutScreen() {
         ...(serviceType === "pickup" && { pickupTime }),
         description: orderDescription,
       };
-      
 
-      
+
+
 
       const response = await fetch(
         "https://gebeta-delivery1.onrender.com/api/v1/orders/place-order",
@@ -470,7 +470,7 @@ export default function CheckoutScreen() {
         }
       );
 
-        console.log("====", orderPayload)
+      console.log("====", orderPayload)
       if (response.ok) {
         result = await response.json();
         console.log("Order result:", result);
@@ -588,7 +588,7 @@ export default function CheckoutScreen() {
       >
         <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
           <View style={{ flexDirection: "row", alignItems: "center", padding: 8, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: colors.divider }}>
-            <TouchableOpacity onPress={() => {setShowWebView(false); router.replace("/(tabs)")}} style={{ padding: 8 }}>
+            <TouchableOpacity onPress={() => { setShowWebView(false); router.replace("/(tabs)") }} style={{ padding: 8 }}>
               <Text style={{ color: colors.primary, fontWeight: "bold" }}>Close</Text>
             </TouchableOpacity>
             <Text style={{ flex: 1, textAlign: "center", fontWeight: "bold" }}>Payment</Text>
@@ -637,7 +637,7 @@ export default function CheckoutScreen() {
         </View>
       </View>
 
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
@@ -648,99 +648,62 @@ export default function CheckoutScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-        {/* Restaurant Info Card */}
-        {restaurant && (
-          <View style={styles.restaurantCard}>
-            <View style={styles.restaurantCardGradient}>
-              <Image
-                source={{ uri: restaurant.imageUrl }}
-                style={styles.restaurantImage}
-                contentFit="cover"
-              />
-              <View style={styles.restaurantDetails}>
-                <Text style={styles.restaurantName}>{restaurant.name}</Text>
-                <View style={styles.deliveryTimeContainer}>
-                  <Clock size={16} color={colors.white} style={styles.deliveryTimeIcon} />
-                  <Text style={styles.deliveryTimeText}>
-                    Estimated {serviceType === "delivery" ? "delivery" : serviceType === "pickup" ? "pickup" : "preparation"}: {restaurant.estimatedDeliveryTime}
-                  </Text>
-                </View>
-                <View style={styles.ratingContainer}>
-                  <Text style={styles.ratingText}>4.8 • Ethiopian Cuisine</Text>
+          {/* Restaurant Info Card */}
+          {restaurant && (
+            <View style={styles.restaurantCard}>
+              <View style={styles.restaurantCardGradient}>
+                <Image
+                  source={{ uri: restaurant.imageUrl }}
+                  style={styles.restaurantImage}
+                  contentFit="cover"
+                />
+                <View style={styles.restaurantDetails}>
+                  <Text style={styles.restaurantName}>{restaurant.name}</Text>
+                  <View style={styles.deliveryTimeContainer}>
+                    <Clock size={16} color={colors.white} style={styles.deliveryTimeIcon} />
+                    <Text style={styles.deliveryTimeText}>
+                      Estimated {serviceType === "delivery" ? "delivery" : serviceType === "pickup" ? "pickup" : "preparation"}: {restaurant.estimatedDeliveryTime}
+                    </Text>
+                  </View>
+                  <View style={styles.ratingContainer}>
+                    <Text style={styles.ratingText}>4.8 • Ethiopian Cuisine</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {/* Service Type Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Choose Service Type</Text>
-          <View style={styles.serviceTypeContainer}>
-            {(["delivery", "dine-in", "pickup"] as OrderServiceType[]).map((type) => {
-              const IconComponent = getServiceTypeIcon(type);
-              const isActive = serviceType === type;
-              return (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.serviceTypeButton,
-                    isActive && styles.serviceTypeButtonActive,
-                  ]}
-                  onPress={() => handleServiceTypeChange(type)}
-                >
-                  <View style={[
-                    styles.serviceTypeGradient,
-                    isActive ? styles.serviceTypeActive : styles.serviceTypeInactive
-                  ]}>
-                    <IconComponent
-                      size={24}
-                      color={isActive ? colors.white : colors.primary}
-                    />
-                    <Text
-                      style={[
-                        styles.serviceTypeText,
-                        isActive && styles.serviceTypeTextActive,
-                      ]}
-                    >
-                      {type === "dine-in" ? "Dine In" : type.charAt(0).toUpperCase() + type.slice(1)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        
-
-        {/* Vehicle Type for Delivery */}
-        {serviceType === "delivery" && (
+          {/* Service Type Selection */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Delivery Vehicle</Text>
-            <View style={styles.vehicleTypeContainer}>
-              {["Bicycle", "Motorcycle", "Car"].map((type) => {
-                const isActive = vehicleType === type;
+            <Text style={styles.sectionTitle}>Choose Service Type</Text>
+            <View style={styles.serviceTypeContainer}>
+              {(["delivery", "dine-in", "pickup"] as OrderServiceType[]).map((type) => {
+                const IconComponent = getServiceTypeIcon(type);
+                const isActive = serviceType === type;
                 return (
                   <TouchableOpacity
                     key={type}
                     style={[
-                      styles.vehicleTypeButton,
-                      isActive && styles.vehicleTypeButtonActive,
+                      styles.serviceTypeButton,
+                      isActive && styles.serviceTypeButtonActive,
                     ]}
-                    onPress={() => setVehicleType(type)}
+                    onPress={() => handleServiceTypeChange(type)}
                   >
-                    <Text style={styles.vehicleEmoji}>
-                      {type === "Car" ? "🚗" : type === "Bicycle" ? "🚲" : "🏍️"}
-                    </Text>
-                    <View style={styles.vehicleTextContainer}>
+                    <View style={[
+                      styles.serviceTypeGradient,
+                      isActive ? styles.serviceTypeActive : styles.serviceTypeInactive
+                    ]}>
+                      <IconComponent
+                        size={24}
+                        color={isActive ? colors.white : colors.primary}
+                      />
                       <Text
                         style={[
-                          styles.vehicleTypeText,
-                          isActive && styles.vehicleTypeTextActive,
+                          styles.serviceTypeText,
+                          isActive && styles.serviceTypeTextActive,
                         ]}
                       >
-                        {type}
+                        {type === "dine-in" ? "Dine In" : type.charAt(0).toUpperCase() + type.slice(1)}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -748,302 +711,339 @@ export default function CheckoutScreen() {
               })}
             </View>
           </View>
-        )}
-        {/* Location Tracking Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Use Current location</Text>
-          <View style={styles.locationContainer}>
-            {currentLocation ? (
-              <View style={styles.locationSuccessContainer}>
-                <MapPin size={20} color={colors.success} />
-                <View style={styles.locationDetails}>
-                  <Text style={styles.locationStatusText}>Location captured successfully</Text>
-                  <Text style={styles.locationCoordsText}>
-                    {/* {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)} */}
-                  </Text>
+
+
+
+          {/* Vehicle Type for Delivery */}
+          {serviceType === "delivery" && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Delivery Vehicle</Text>
+              <View style={styles.vehicleTypeContainer}>
+                {["Bicycle", "Motorcycle", "Car"].map((type) => {
+                  const isActive = vehicleType === type;
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.vehicleTypeButton,
+                        isActive && styles.vehicleTypeButtonActive,
+                      ]}
+                      onPress={() => setVehicleType(type)}
+                    >
+                      <Text style={styles.vehicleEmoji}>
+                        {type === "Car" ? "🚗" : type === "Bicycle" ? "🚲" : "🏍️"}
+                      </Text>
+                      <View style={styles.vehicleTextContainer}>
+                        <Text
+                          style={[
+                            styles.vehicleTypeText,
+                            isActive && styles.vehicleTypeTextActive,
+                          ]}
+                        >
+                          {type}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+          {/* Location Tracking Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Use Current location</Text>
+            <View style={styles.locationContainer}>
+              {currentLocation ? (
+                <View style={styles.locationSuccessContainer}>
+                  <MapPin size={20} color={colors.success} />
+                  <View style={styles.locationDetails}>
+                    <Text style={styles.locationStatusText}>Location captured successfully</Text>
+                    <Text style={styles.locationCoordsText}>
+                      {/* {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)} */}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.refreshLocationButton}
+                    onPress={getCurrentLocation}
+                    disabled={isGettingLocation}
+                  >
+                    <MapPin size={16} color={colors.primary} />
+                  </TouchableOpacity>
                 </View>
+              ) : (
                 <TouchableOpacity
-                  style={styles.refreshLocationButton}
+                  style={styles.getLocationButton}
                   onPress={getCurrentLocation}
                   disabled={isGettingLocation}
                 >
-                  <MapPin size={16} color={colors.primary} />
+                  <View style={styles.getLocationGradient}>
+                    <MapPin size={24} color={colors.primary} />
+                    <Text style={styles.getLocationText}>
+                      {isGettingLocation ? "Getting Location..." : "Use Current Location"}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity 
-                style={styles.getLocationButton}
-                onPress={getCurrentLocation}
-                disabled={isGettingLocation}
-              >
-                <View style={styles.getLocationGradient}>
-                  <MapPin size={24} color={colors.primary} />
-                  <Text style={styles.getLocationText}>
-                    {isGettingLocation ? "Getting Location..." : "Use Current Location"}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          </View>
-          {/* <Text style={styles.locationInfoText}>
+              )}
+            </View>
+            {/* <Text style={styles.locationInfoText}>
             Your exact location will be tracked when placing the order for better service delivery.
           </Text> */}
-        </View>
+          </View>
 
-        {/* Delivery Address - Only show if user refused location */}
-        <Button style={styles.section} title={`${locationRefused ? "Hide Address List" : "Use Other Addresses"}`} onPress={() => {
-          setLocationRefused(prev=>!prev);
-          fetchAddresses();
-        }} />
-        {/* <Text>Location Refused: {locationRefused.toString()}</Text> */}
-        {serviceType === "delivery" && locationRefused && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Delivery Address</Text>
-            {addresses.length === 0 ? (
-              <TouchableOpacity style={styles.addAddressButton} onPress={handleAddAddress}>
-                <View style={styles.addAddressGradient}>
-                  <MapPin size={24} color={colors.primary} />
-                  <Text style={styles.addAddressText}>Add New Address</Text>
-                </View>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.addressesContainer}>
-                {addresses?.map((address) => (
-                  <TouchableOpacity
-                    key={getAddressId(address)}
-                    style={[
-                      styles.addressCard,
-                      selectedAddress === getAddressId(address) && styles.selectedAddressCard
-                    ]}
-                    onPress={() => setSelectedAddress(getAddressId(address) || null)}
-                  >
-                    <View style={styles.addressCardContent}>
-                      <View style={styles.addressIconContainer}>
-                        <MapPin size={20} color={colors.primary} />
-                      </View>
-                      <View style={styles.addressDetails}>
-                        <Text style={styles.addressType}>
-                          {getAddressType(address).charAt(0).toUpperCase() + getAddressType(address).slice(1)}
-                          {address.isDefault && (
-                            <Text style={styles.defaultBadge}> • Default</Text>
+          {/* Delivery Address - Only show if user refused location */}
+          <Button style={styles.section} title={`${locationRefused ? "Hide Address List" : "Use Other Addresses"}`} onPress={() => {
+            setLocationRefused(prev => !prev);
+            fetchAddresses();
+          }} />
+          {/* <Text>Location Refused: {locationRefused.toString()}</Text> */}
+          {serviceType === "delivery" && locationRefused && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Delivery Address</Text>
+              {addresses.length === 0 ? (
+                <TouchableOpacity style={styles.addAddressButton} onPress={handleAddAddress}>
+                  <View style={styles.addAddressGradient}>
+                    <MapPin size={24} color={colors.primary} />
+                    <Text style={styles.addAddressText}>Add New Address</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.addressesContainer}>
+                  {addresses?.map((address) => (
+                    <TouchableOpacity
+                      key={getAddressId(address)}
+                      style={[
+                        styles.addressCard,
+                        selectedAddress === getAddressId(address) && styles.selectedAddressCard
+                      ]}
+                      onPress={() => setSelectedAddress(getAddressId(address) || null)}
+                    >
+                      <View style={styles.addressCardContent}>
+                        <View style={styles.addressIconContainer}>
+                          <MapPin size={20} color={colors.primary} />
+                        </View>
+                        <View style={styles.addressDetails}>
+                          <Text style={styles.addressType}>
+                            {getAddressType(address).charAt(0).toUpperCase() + getAddressType(address).slice(1)}
+                            {address.isDefault && (
+                              <Text style={styles.defaultBadge}> • Default</Text>
+                            )}
+                          </Text>
+                          <Text style={styles.addressText}>
+                            {getAddressDisplayName(address)}
+                          </Text>
+                          {getAddressDetails(address) && (
+                            <Text style={styles.addressText}>
+                              {getAddressDetails(address)}
+                            </Text>
                           )}
-                        </Text>
-                        <Text style={styles.addressText}>
-                          {getAddressDisplayName(address)}
-                        </Text>
-                        {getAddressDetails(address) && (
-                          <Text style={styles.addressText}>
-                            {getAddressDetails(address)}
-                          </Text>
-                        )}
-                        {getAddressCoordinates(address) && (
-                          <Text style={styles.addressText}>
-                            {getAddressCoordinates(address)?.lat ? 
-                              `Coordinates: ${getAddressCoordinates(address)?.lat.toFixed(4)}, ${getAddressCoordinates(address)?.lng.toFixed(4)}` :
-                             null
-                            }
-                          </Text>
+                          {getAddressCoordinates(address) && (
+                            <Text style={styles.addressText}>
+                              {getAddressCoordinates(address)?.lat ?
+                                `Coordinates: ${getAddressCoordinates(address)?.lat.toFixed(4)}, ${getAddressCoordinates(address)?.lng.toFixed(4)}` :
+                                null
+                              }
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                      <View style={styles.addressSelectionIndicator}>
+                        {selectedAddress === getAddressId(address) ? (
+                          <View style={styles.selectedAddressIndicator}>
+                            <View style={styles.selectedTextContainer}>
+                              <Text style={styles.selectedAddressText}>Selected</Text>
+                            </View>
+                          </View>
+                        ) : (
+                          <View style={styles.radioButton}>
+                            <View style={styles.radioButtonInner} />
+                          </View>
                         )}
                       </View>
-                    </View>
-                    <View style={styles.addressSelectionIndicator}>
-                      {selectedAddress === getAddressId(address) ? (
-                        <View style={styles.selectedAddressIndicator}>
-                          <View style={styles.selectedTextContainer}>
-                            <Text style={styles.selectedAddressText}>Selected</Text>
-                          </View>
-                        </View>
-                      ) : (
-                        <View style={styles.radioButton}>
-                          <View style={styles.radioButtonInner} />
-                        </View>
-                      )}
-                    </View>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity style={styles.addNewAddressButton} onPress={handleAddAddress}>
+                    <Text style={styles.addNewAddressText}>+ Add New Address</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Table Number for Dine-in */}
+          {serviceType === "dine-in" && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Select Table</Text>
+              <View style={styles.tableNumberContainer}>
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map((num) => (
+                  <TouchableOpacity
+                    key={num}
+                    style={[
+                      styles.tableNumberButton,
+                      tableNumber === num && styles.tableNumberButtonActive,
+                    ]}
+                    onPress={() => setTableNumber(num)}
+                  >
+                    <Text
+                      style={[
+                        styles.tableNumberText,
+                        tableNumber === num && styles.tableNumberTextActive,
+                      ]}
+                    >
+                      {num}
+                    </Text>
                   </TouchableOpacity>
                 ))}
-                <TouchableOpacity style={styles.addNewAddressButton} onPress={handleAddAddress}>
-                  <Text style={styles.addNewAddressText}>+ Add New Address</Text>
-                </TouchableOpacity>
               </View>
-            )}
-          </View>
-        )}
-
-        {/* Table Number for Dine-in */}
-        {serviceType === "dine-in" && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Table</Text>
-            <View style={styles.tableNumberContainer}>
-              {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map((num) => (
-                <TouchableOpacity
-                  key={num}
-                  style={[
-                    styles.tableNumberButton,
-                    tableNumber === num && styles.tableNumberButtonActive,
-                  ]}
-                  onPress={() => setTableNumber(num)}
-                >
-                  <Text
-                    style={[
-                      styles.tableNumberText,
-                      tableNumber === num && styles.tableNumberTextActive,
-                    ]}
-                  >
-                    {num}
-                  </Text>
-                </TouchableOpacity>
-              ))}
             </View>
-          </View>
-        )}
+          )}
 
-        {/* Pickup Time for Pickup */}
-        {serviceType === "pickup" && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Pickup Time</Text>
-            <View style={styles.pickupTimeContainer}>
-              {["15 min", "30 min", "45 min", "1 hour", "1.5 hours", "2 hours"].map((time) => (
-                <TouchableOpacity
-                  key={time}
-                  style={[
-                    styles.pickupTimeButton,
-                    pickupTime === time && styles.pickupTimeButtonActive,
-                  ]}
-                  onPress={() => setPickupTime(time)}
-                >
-                  <Text
+          {/* Pickup Time for Pickup */}
+          {serviceType === "pickup" && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Pickup Time</Text>
+              <View style={styles.pickupTimeContainer}>
+                {["15 min", "30 min", "45 min", "1 hour", "1.5 hours", "2 hours"].map((time) => (
+                  <TouchableOpacity
+                    key={time}
                     style={[
-                      styles.pickupTimeText,
-                      pickupTime === time && styles.pickupTimeTextActive,
+                      styles.pickupTimeButton,
+                      pickupTime === time && styles.pickupTimeButtonActive,
                     ]}
+                    onPress={() => setPickupTime(time)}
                   >
-                    {time}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Order Description */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Notes</Text>
-          <View style={styles.orderDescriptionContainer}>
-            <TextInput
-              style={styles.orderDescriptionInput}
-              placeholder="Add special instructions or notes for your order (optional)"
-              placeholderTextColor={colors.lightText}
-              value={orderDescription}
-              onChangeText={setOrderDescription}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
-        </View>
-
-        {/* Order Items */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Order</Text>
-          <View style={styles.orderItemsCard}>
-            {cartItems.map((item, index) => (
-              <View key={item.menuItemId} style={[
-                styles.orderItem,
-                index === cartItems.length - 1 && styles.lastOrderItem
-              ]}>
-                <View style={styles.orderItemLeft}>
-                  <View style={styles.quantityBadge}>
-                    <Text style={styles.quantityText}>{item.quantity}</Text>
-                  </View>
-                  <Text style={styles.orderItemName}>{item.menuItem.name}</Text>
-                </View>
-                <Text style={styles.orderItemPrice}>
-                  {(item.menuItem.price * item.quantity).toFixed(2)} Birr
-                </Text>
+                    <Text
+                      style={[
+                        styles.pickupTimeText,
+                        pickupTime === time && styles.pickupTimeTextActive,
+                      ]}
+                    >
+                      {time}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Tip Section */}
-        {serviceType !== "dine-in" && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Add a Tip</Text>
-            <View style={styles.tipContainer}>
-              {[0, 10, 20, 30, 50, 100].map((amount) => (
-                <TouchableOpacity
-                  key={amount}
-                  style={[
-                    styles.tipButton,
-                    tip === amount && !customTip && styles.tipButtonSelected,
-                  ]}
-                  onPress={() => handleTipChange(amount)}
-                >
-                  <Text
-                    style={[
-                      styles.tipButtonText,
-                      tip === amount && !customTip && styles.tipButtonTextSelected,
-                    ]}
-                  >
-                    {amount === 0 ? "No Tip" : `${amount} Birr`}
-                  </Text>
-                </TouchableOpacity>
-              ))}
             </View>
-            <View style={styles.customTipContainer}>
-              <Text style={styles.customTipLabel}>Custom Amount</Text>
+          )}
+
+          {/* Order Description */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Order Notes</Text>
+            <View style={styles.orderDescriptionContainer}>
               <TextInput
-                style={styles.customTipInput}
-                placeholder="Enter custom tip amount"
+                style={styles.orderDescriptionInput}
+                placeholder="Add special instructions or notes for your order (optional)"
                 placeholderTextColor={colors.lightText}
-                value={customTip}
-                onChangeText={handleCustomTipChange}
-                keyboardType="numeric"
+                value={orderDescription}
+                onChangeText={setOrderDescription}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
               />
             </View>
           </View>
-        )}
 
-        {/* Order Summary */}
-        <View style={styles.orderSummaryCard}>
-          <View style={styles.orderSummaryContainer}>
-            <Text style={styles.orderSummaryTitle}>Order Summary</Text>
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryValue}>{subtotal.toFixed(2)} Birr</Text>
-            </View>
-
-            {serviceType === "delivery" && (
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Delivery Fee</Text>
-                <Text style={styles.summaryValue}>{apiDeliveryFee.toFixed(2)} Birr</Text>
-              </View>
-            )}
-
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Tax (15%)</Text>
-              <Text style={styles.summaryValue}>{tax.toFixed(2) } Birr</Text>
-            </View>
-
-            {serviceType !== "dine-in" && (
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Tip</Text>
-                <Text style={styles.summaryValue}>{tip.toFixed(2)} Birr</Text>
-              </View>
-            )}
-
-            <View style={styles.summaryDivider} />
-
-            <View style={styles.summaryRow}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>{total.toFixed(2) } Birr</Text>
+          {/* Order Items */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Your Order</Text>
+            <View style={styles.orderItemsCard}>
+              {cartItems.map((item, index) => (
+                <View key={item.menuItemId} style={[
+                  styles.orderItem,
+                  index === cartItems.length - 1 && styles.lastOrderItem
+                ]}>
+                  <View style={styles.orderItemLeft}>
+                    <View style={styles.quantityBadge}>
+                      <Text style={styles.quantityText}>{item.quantity}</Text>
+                    </View>
+                    <Text style={styles.orderItemName}>{item.menuItem.name}</Text>
+                  </View>
+                  <Text style={styles.orderItemPrice}>
+                    {(item.menuItem.price * item.quantity).toFixed(2)} Birr
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
-        </View>
 
-        {/* Security Badge */}
-        {/* <View style={styles.securityBadge}>
+          {/* Tip Section */}
+          {serviceType !== "dine-in" && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Add a Tip</Text>
+              <View style={styles.tipContainer}>
+                {[0, 10, 20, 30, 50, 100].map((amount) => (
+                  <TouchableOpacity
+                    key={amount}
+                    style={[
+                      styles.tipButton,
+                      tip === amount && !customTip && styles.tipButtonSelected,
+                    ]}
+                    onPress={() => handleTipChange(amount)}
+                  >
+                    <Text
+                      style={[
+                        styles.tipButtonText,
+                        tip === amount && !customTip && styles.tipButtonTextSelected,
+                      ]}
+                    >
+                      {amount === 0 ? "No Tip" : `${amount} Birr`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.customTipContainer}>
+                <Text style={styles.customTipLabel}>Custom Amount</Text>
+                <TextInput
+                  style={styles.customTipInput}
+                  placeholder="Enter custom tip amount"
+                  placeholderTextColor={colors.lightText}
+                  value={customTip}
+                  onChangeText={handleCustomTipChange}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Order Summary */}
+          <View style={styles.orderSummaryCard}>
+            <View style={styles.orderSummaryContainer}>
+              <Text style={styles.orderSummaryTitle}>Order Summary</Text>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Subtotal</Text>
+                <Text style={styles.summaryValue}>{subtotal.toFixed(2)} Birr</Text>
+              </View>
+
+              {serviceType === "delivery" && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Delivery Fee</Text>
+                  <Text style={styles.summaryValue}>{apiDeliveryFee.toFixed(2)} Birr</Text>
+                </View>
+              )}
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Tax (15%)</Text>
+                <Text style={styles.summaryValue}>{tax.toFixed(2)} Birr</Text>
+              </View>
+
+              {serviceType !== "dine-in" && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Tip</Text>
+                  <Text style={styles.summaryValue}>{tip.toFixed(2)} Birr</Text>
+                </View>
+              )}
+
+              <View style={styles.summaryDivider} />
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalValue}>{total.toFixed(2)} Birr</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Security Badge */}
+          {/* <View style={styles.securityBadge}>
           <Text style={styles.securityText}>Secure checkout with encryption</Text>
         </View> */}
         </ScrollView>
@@ -1061,7 +1061,7 @@ export default function CheckoutScreen() {
               <Text style={styles.orderTypeText}>{getServiceTypeLabel(serviceType)}</Text>
             </View>
           </View>
-          
+
           <Button
             title={`Place ${getServiceTypeLabel(serviceType)} Order`}
             onPress={handlePlaceOrder}
@@ -1190,7 +1190,7 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 28,
-    
+
   },
   sectionTitle: {
     fontSize: 20,
@@ -1712,7 +1712,7 @@ const styles = StyleSheet.create({
   placeOrderButton: {
     marginBottom: 0,
   },
-  
+
   // Location tracking styles
   locationContainer: {
     marginBottom: 12,

@@ -79,7 +79,7 @@ export default function OrdersScreen() {
     // Set up interval to fetch every 5 minutes (300000 ms)
     intervalRef.current = setInterval(() => {
       fetchOrders(false); // Don't show loading spinner for background refresh
-    }, 5000) as unknown as NodeJS.Timeout;
+    }, 50000) as unknown as NodeJS.Timeout;
 
     // Cleanup on unmount
     return () => {
@@ -312,7 +312,7 @@ export default function OrdersScreen() {
                 const restaurantImage =
                   restaurant.imageCover ||
                   restaurant.image ||
-                  "https://placehold.co/48x48?text=R";
+                  `https://placehold.co/48x48?text=${restaurantName?.charAt(0)}`;
                 // Use order.createdAt or fallback to updatedAt
                 const orderDate =
                   order.createdAt || order.updatedAt || "";
@@ -341,9 +341,13 @@ export default function OrdersScreen() {
                 const orderVId = order.orderCode|| "N/A";
                 const orderVerificationCode = order.userVerificationCode || "N/A";
                 // Create items display text
-                const itemsDisplay = Object.entries(groupedItems)
-                  .map(([name, quantity]) => `${name}${(quantity as number) > 1 ? ` (${quantity})` : ''}`)
-                  .join(', ');
+                const typesOfOrder =
+                  order.deliveryVehicle === "Car" ||
+                  order.deliveryVehicle === "Bicycle" ||
+                  order.deliveryVehicle === "Motor"
+                    ? "Delivery"
+                    : "Dine in or take away";
+                  
                 
                 // Total: prefer totalPrice, fallback to foodTotal
                 const totalAmount =
@@ -357,7 +361,9 @@ export default function OrdersScreen() {
                   restaurant.location && restaurant.location.address
                     ? restaurant.location.address
                     : null;
-
+                // Delivery method: extract from order data or set default
+                const deliveryMethod = order.deliveryVehicle || "delivery";
+                console.log('#########  deliveryMethod', order);
                 return (
                     <Animated.View
                       key={orderId}
@@ -427,34 +433,19 @@ export default function OrdersScreen() {
                                 <Text style={styles.priceSeparator}>•</Text>
                                 <Text style={styles.totalPrice}>ETB {Number(totalAmount).toFixed(2)}</Text>
                               </View>
-                              {/* <Text style={styles.itemsList} numberOfLines={2}>
-                                {itemsDisplay}
-                              </Text> */}
+                              <Text style={styles.itemsList} numberOfLines={2}>
+                               Order Type: {typesOfOrder} <Text style={{ fontSize: 20}}>{deliveryMethod === "Bicycle" ? "🚲" : deliveryMethod === "Motor" ? "🛵" : "🚗"}</Text>
+                               </Text>
                             </View>
                           </View>
 
                     {/* Order Items List */}
-                    {/* {items.length > 0 && (
-                      <View style={styles.orderItemsContainer}>
-                        <Text style={[styles.orderItemsTitle, { color: colors.text, fontSize: 14, fontWeight: "600", marginBottom: 8 }]}>
-                          Order Items:
-                        </Text>
-                        {items.map((item: any, index: number) => (
-                          <View key={index} style={styles.orderItemRow}>
-                            <Text style={[styles.orderItemName, { color: colors.text, fontSize: 13, flex: 1 }]}>
-                              {item.foodId?.foodName || 'Unknown Item'}
-                            </Text>
-                            <Text style={[styles.orderItemQuantity, { color: colors.primary, fontSize: 13, fontWeight: "600" }]}>
-                              x{item.quantity || 1}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
-                    )} */}
+                    
 
                           {/* Order Details */}
                           <View style={styles.orderDetailsContainer}>
                             <View style={styles.detailCard}>
+                              {/* Order Time Row */}
                               <View style={styles.detailRow}>
                                 <View style={styles.detailIconContainer}>
                                   <Clock size={16} color="#6B7280" />
@@ -470,21 +461,21 @@ export default function OrdersScreen() {
                                   </Text>
                                 </View>
                               </View>
-                              
-                              {/* <View style={styles.detailRow}>
-                                <View style={styles.detailIconContainer}>
-                                  <MapPin size={16} color="#6B7280" />
+                              {/* Delivery Method Row */}
+                              {/* {deliveryMethod && (
+                                <View style={styles.detailRow}>
+                                  <View style={styles.detailIconContainer}>
+                                    <MapPin size={16} color="#6B7280" />
+                                  </View>
+                                  <View style={styles.detailTextContainer}>
+                                    <Text style={styles.detailLabel}>Delivery Method</Text>
+                                    <Text style={styles.detailValue}>
+                                      {deliveryMethod.charAt(0).toUpperCase() +
+                                        deliveryMethod.slice(1).replace(/-/g, " ")}
+                                    </Text>
+                                  </View>
                                 </View>
-                                {/* <View style={styles.detailTextContainer}>
-                                  <Text style={styles.detailLabel}>Delivery Address</Text>
-                                  <Text style={styles.detailValue} numberOfLines={2}>
-                                    {deliveryAddress?.addressLine1 ||
-                                      deliveryAddress?.street ||
-                                      deliveryAddress?.address ||
-                                      "Address not available"}
-                                  </Text>
-                                </View> 
-                              </View> */}
+                              )} */}
                             </View>
                           </View>
 
@@ -534,7 +525,7 @@ export default function OrdersScreen() {
               >
                 <View style={styles.modalHeaderContent}>
                   <Text style={styles.modalTitle}>
-                    Tracking Delivery - Order {currentOrder?.orderCode || trackingOrderId}
+                   Order {currentOrder?.orderCode || trackingOrderId}
                   </Text>
                   <TouchableOpacity
                     onPress={() => setTrackingOrderId(null)}
@@ -780,7 +771,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   orderDetailsContainer: {
-    marginTop: 8,
+    marginTop: 1,
+    
   },
   detailCard: {
     backgroundColor: '#F9FAFB',
