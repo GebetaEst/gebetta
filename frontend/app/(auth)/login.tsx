@@ -81,6 +81,10 @@ export default function LoginScreen() {
 
     setLoading(true);
     setResponseMessage('');
+    console.log('🔐 Attempting login with:', {
+      phone: phoneNumber,
+      password: password
+    });
     const cleanedNumber = phoneNumber.replace(/\D/g, '').replace(/^0+/, '');
     const formattedPhone = `${selectedCountry.dialCode}${cleanedNumber}`.replace('+', '');
 
@@ -96,7 +100,7 @@ export default function LoginScreen() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          phone: formattedPhone,
+          phone: phoneNumber,
           password: password 
         }),
       });
@@ -110,10 +114,10 @@ export default function LoginScreen() {
         throw new Error(data?.message || 'Login failed');
       }
 
-      if (data.data?.message.includes('OTP sent to your')){
-        setShowOTPPage(false)
-        return;
-      }
+      // if (data.data?.message.includes('OTP sent to your')){
+      //   setShowOTPPage(false)
+      //   return;
+      // }
       if (!data.data.user){
         setShowOTPPage(false)
         return;

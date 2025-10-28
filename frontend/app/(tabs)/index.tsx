@@ -330,7 +330,7 @@ export default function HomeScreen() {
           <Text style={styles.topLocationText}>
             📍 {user?.addresses?.find(addr => addr.isDefault)?.Name 
               ? `${user.addresses.find(addr => addr.isDefault)?.Name}`
-              : "Use current location"}
+              : ""}
           </Text>
         </TouchableOpacity>
 
