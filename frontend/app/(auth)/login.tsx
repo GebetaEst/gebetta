@@ -303,7 +303,7 @@ export default function LoginScreen() {
                   </TouchableOpacity>
 
                   <View style={styles.linksContainer}>
-                    <TouchableOpacity onPress={() => router.push('/(auth)/verify')}>
+                    <TouchableOpacity onPress={() => router.push('/(auth)/forgot_pass')}>
                       <Text style={styles.linkText}>Forgot Password?</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push('/(auth)/restaurant-owner-signup')}>
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
     borderRadius: 16,
     padding: 24,
     shadowColor: '#000',
@@ -411,18 +411,19 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 5,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   cardTitle: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#111',
+    fontFamily: 'Roboto',
     marginBottom: 8,
     textAlign: 'center',
   },
   cardSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#ffffff',
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -520,16 +521,18 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   termsText: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 13,
+    color: '#ffffff',
     textAlign: 'center',
     marginTop: 24,
     lineHeight: 18,
   },
   linkText: {
-    color: '#185AA1',
+    color: '#000000',
     textDecorationLine: 'underline',
-    fontSize: 14,
+    fontSize: 16,
+    // fontWeight: 'bold',
+    fontFamily: 'Roboto',
   },
   countryList: {
     maxHeight: 220,

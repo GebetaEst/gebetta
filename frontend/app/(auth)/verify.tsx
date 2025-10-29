@@ -237,11 +237,13 @@ const styles = StyleSheet.create({
   otpInputContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: "50%",
+    // width: "60%",
     height: 50,
     borderRadius: 12,
     padding: 12,
     marginHorizontal: 15,
+    // borderWidth: 1,
+    borderColor: '#ccc',
     alignSelf: "center",
     alignItems: "center",
   },
@@ -282,11 +284,12 @@ const styles = StyleSheet.create({
   otpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 20,
   },
   otpInput: {
-    width: 48,
-    height: 56,
+    width: 46,
+    height: 46,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 10,
@@ -294,6 +297,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     backgroundColor: '#f5f5f5',
     color: '#000',
+    margin:2,
   },
   button: {
     backgroundColor: '#34C759',
