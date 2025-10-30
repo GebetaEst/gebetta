@@ -15,7 +15,7 @@ export const ENDPOINTS = {
   RESEND_OTP: "/auth/resend-otp",
   
   // Profile
-  UPDATE_PROFILE: "/users/profile",
+  UPDATE_PROFILE: "/users/updateMe",
   
   // Addresses
   MY_ADDRESSES: "/users/myAddresses",

@@ -21,7 +21,7 @@ export default function AddAddressScreen() {
       
       if (status !== 'granted') {
         Alert.alert(
-          'Permission Denied',
+          'Permission Denied 24',
           'Location permission is required to get your current coordinates.',
           [{ text: 'OK' }]
         );

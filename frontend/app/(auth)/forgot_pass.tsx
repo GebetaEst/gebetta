@@ -77,9 +77,9 @@ const ForgotPasswordScreen = () => {
         setResponseMessage(res.data.message || "Failed to send OTP.");
         setResponseType("error");
       }
-      if (res.data.status === "success") {
-        navigation.navigate('/(auth)/resetPass' as never);
-      }
+    //   if (res.data.status === "success") {
+    //     navigation.navigate('/(auth)/resetPass' as never);
+    //   }
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||

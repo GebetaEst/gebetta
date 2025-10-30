@@ -8,16 +8,17 @@ import {
   ScrollView,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import axios from 'axios';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import colors from '@/constants/colors';
 import typography from '@/constants/typography';
-
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 const { width, height } = Dimensions.get('window');
 
 type OtpVerificationFormProps = {
@@ -28,11 +29,15 @@ type OtpVerificationFormProps = {
 const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setShowOtpForm }) => {
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]); // for 6-digit OTP
   const [password, setPassword] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
   const [passwordConfirm, setPasswordConfirm] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
   const inputRefs = useRef<Array<TextInput | null>>([]);
   const navigation = useNavigation<NavigationProp<any>>();
+  const router = useRouter();
 
   const handleChange = (index: number, value: string) => {
     if (!/^[0-9]?$/.test(value)) return;
@@ -67,7 +72,6 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setSho
   };
 
   const handleSubmit = async (e?: any) => {
-    // No need for e.preventDefault() since no <form>
     e?.preventDefault?.();
 
     const code = otp.join("");
@@ -81,6 +85,7 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setSho
     }
 
     try {
+      setLoading(true);
       const res = await axios.post(
         "https://gebeta-delivery1.onrender.com/api/v1/users/resetPasswordOTP",
         {
@@ -90,9 +95,11 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setSho
           passwordConfirm,
         }
       );
-      console.log("777777777777777777",res.data.status);
-      if (res.data.status === "success") {
-        navigation.navigate('/(auth)/login');
+      if (res?.data?.status === "success") {
+        console.log(res.data.status);
+        setTimeout(() => {
+          router.push("/(auth)/login");
+        }, 800);
       }
 
       setMessage(res.data.message || "OTP verified successfully");
@@ -104,6 +111,8 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setSho
         setError("Invalid or expired OTP");
       }
       setMessage("");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -119,8 +128,6 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setSho
       );
       setMessage(res.data.message || "OTP resent");
       setError("");
-
-      
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message || "Failed to resend OTP");
@@ -133,67 +140,79 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setSho
 
   return (
     <View style={styles.outerContainer}>
-      
-        <View style={styles.overlay} />
-        <KeyboardAvoidingView
-          style={styles.kbView}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <View style={styles.overlay} />
+      <KeyboardAvoidingView
+        style={styles.kbView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContainer}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.container}>
-              <View style={styles.card}>
-                <Text style={styles.title}>Reset Password</Text>
-                <Text style={styles.subtitle}>Enter the 6-digit OTP sent to {phone}</Text>
+          <View style={styles.container}>
+            <View style={styles.card}>
+              <Text style={styles.title}>Reset Password</Text>
+              <Text style={styles.subtitle}>Enter the 6-digit OTP sent to {phone}</Text>
 
-                {/* OTP */}
-                <View style={styles.otpContainer}>
-                  {otp.map((digit, index) => (
-                    <TextInput
-                      key={index}
-                      ref={(ref) => {
-                        if (ref) {
-                          inputRefs.current[index] = ref;
-                        }
-                      }}
-                      style={styles.otpInput}
-                      value={digit}
-                      onChangeText={(value) => handleChange(index, value)}
-                      onKeyPress={(event) => handleKeyPress(index, event)}
-                      maxLength={1}
-                      keyboardType="number-pad"
-                      textAlign="center"
-                      placeholder=""
-                      returnKeyType={index === otp.length - 1 ? 'done' : 'next'}
-                      blurOnSubmit={false}
-                    />
-                  ))}
-                </View>
-
-                {/* Password Inputs */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>New Password</Text>
+              {/* OTP */}
+              <View style={styles.otpContainer}>
+                {otp.map((digit, index) => (
                   <TextInput
-                    style={styles.input}
+                    key={index}
+                    ref={(ref) => {
+                      if (ref) {
+                        inputRefs.current[index] = ref;
+                      }
+                    }}
+                    style={styles.otpInput}
+                    value={digit}
+                    onChangeText={(value) => handleChange(index, value)}
+                    onKeyPress={(event) => handleKeyPress(index, event)}
+                    maxLength={1}
+                    keyboardType="number-pad"
+                    textAlign="center"
+                    placeholder=""
+                    returnKeyType={index === otp.length - 1 ? 'done' : 'next'}
+                    blurOnSubmit={false}
+                  />
+                ))}
+              </View>
+
+              {/* Password Inputs */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>New Password</Text>
+                <View style={styles.inputWithIcon}>
+                  <TextInput
+                    style={[styles.input, { paddingRight: 40 }]}
                     value={password}
                     onChangeText={setPassword}
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
                     placeholder="Enter new password"
                     placeholderTextColor="#9ca3af"
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => setShowPassword((show) => !show)}
+                    accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                    hitSlop={10}
+                  >
+                    {showPassword
+                      ? <Ionicons name="eye-off" size={22} color="#222" />
+                      : <Ionicons name="eye" size={22} color="gray" />}
+                  </TouchableOpacity>
                 </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Confirm Password</Text>
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Confirm Password</Text>
+                <View style={styles.inputWithIcon}>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { paddingRight: 40 }]}
                     value={passwordConfirm}
                     onChangeText={setPasswordConfirm}
-                    secureTextEntry
+                    secureTextEntry={!showPasswordConfirm}
                     placeholder="Confirm new password"
                     placeholderTextColor="#9ca3af"
                     autoCapitalize="none"
@@ -201,25 +220,36 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setSho
                     onSubmitEditing={handleSubmit}
                     returnKeyType="done"
                   />
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => setShowPasswordConfirm((show) => !show)}
+                    accessibilityLabel={showPasswordConfirm ? "Hide password" : "Show password"}
+                    hitSlop={10}
+                  >
+                    {showPasswordConfirm
+                      ? <Ionicons name="eye-off" size={22} color="#00000" />
+                      : <Ionicons name="eye" size={22} color="gray" />}
+                  </TouchableOpacity>
                 </View>
-
-                {/* Error & Message */}
-                {error ? <Text style={styles.error}>{error}</Text> : null}
-                {message ? <Text style={styles.success}>{message}</Text> : null}
-
-                {/* Submit Button */}
-                <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-                  <Text style={styles.buttonText}>Reset Password</Text>
-                </TouchableOpacity>
-
-                {/* Resend */}
-                <TouchableOpacity onPress={handleResend}>
-                  <Text style={styles.resendText}>Resend OTP</Text>
-                </TouchableOpacity>
               </View>
+
+              {/* Error & Message */}
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {message ? <Text style={styles.success}>{message}</Text> : null}
+
+              {/* Submit Button */}
+              <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+                {loading ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.buttonText}>Reset Password</Text>}
+              </TouchableOpacity>
+                
+              {/* Resend */}
+              <TouchableOpacity onPress={handleResend}>
+                <Text style={styles.resendText}>Resend OTP</Text>
+              </TouchableOpacity>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };
@@ -227,7 +257,6 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setSho
 const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
-  
   },
   backgroundImage: {
     flex: 1,
@@ -323,6 +352,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
     color: '#111827',
   },
+  inputWithIcon: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  iconButton: {
+    position: 'absolute',
+    right: 8,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 8,
+    zIndex: 2,
+  },
   error: {
     color: '#ffffff',
     textAlign: 'center',
@@ -335,7 +379,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     backgroundColor: 'rgba(255, 0, 0, 0.7)',
     borderColor: 'rgba(255, 0, 0, 0.7)',
-
   },
   success: {
     color: '#ffffff',
@@ -349,8 +392,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     backgroundColor: 'rgba(101, 171, 97, 0.7)',
     borderColor: 'rgba(3, 181, 51, 0.7)',
-
-    
   },
   button: {
     backgroundColor: '#000000',

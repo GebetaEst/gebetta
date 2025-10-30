@@ -31,7 +31,8 @@ export default function AuthLayout() {
   return (
     <Stack
     screenOptions={{
-      headerShown: false,
+      headerShown: true,
+      header: () => <HeaderBackground />,
     }}
       
     >

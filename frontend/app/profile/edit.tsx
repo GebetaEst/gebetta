@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft , Pencil } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Alert,
@@ -21,14 +21,14 @@ import {
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user, updateProfile } = useAuthStore();
-  
-  const [firstName, setFirstName] = useState((user as any)?.firstName || "");
-  const [lastName, setLastName] = useState((user as any)?.lastName || "");
+  const { user, setUser } = useAuthStore();
+
+  const [firstName, setFirstName] = useState(user?.firstName || "");
+  const [lastName, setLastName] = useState(user?.lastName || "");
   const [avatar, setAvatar] = useState(user?.profilePicture || "");
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [loading, setLoading] = useState(false);
+
+  // Pick image from gallery
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -42,49 +42,67 @@ export default function EditProfileScreen() {
     }
   };
 
+  // Handle form submission
   const handleSave = async () => {
-    if (!firstName.trim()) {
-      Alert.alert("Error", "First name is required");
+    if (!firstName.trim() || !lastName.trim()) {
+      Alert.alert("Error", "Please enter both first and last name");
       return;
     }
-    
-    if (!lastName.trim()) {
-      Alert.alert("Error", "Last name is required");
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
+
+    setLoading(true);
+
     try {
-      await updateProfile({
-        firstName,
-        lastName,
-        avatar,
-      } as any);
-      
-      // Show success message and navigate back immediately
-      Alert.alert("Success", "Profile updated successfully");
-      
-      // Navigate back immediately without waiting for alert
-      setTimeout(() => {
-        try {
-          if (router.canGoBack()) {
-            router.back();
-          } else {
-            router.replace('/(tabs)/profile');
-          }
-        } catch (error) {
-          console.log('Navigation error, using profile tab fallback');
-          router.replace('/(tabs)/profile');
+      const formData = new FormData();
+      formData.append("firstName", firstName);
+      formData.append("lastName", lastName);
+
+      // Add selected image if exists
+      if (avatar && avatar.startsWith("file://")) {
+        const filename = avatar.split("/").pop() || "profile.jpg";
+        const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
+        const type =
+          ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+
+        formData.append("profilePicture", {
+          uri: avatar,
+          name: filename,
+          type,
+        } as any);
+      }
+
+      const response = await fetch(
+        "https://gebeta-delivery1.onrender.com/api/v1/users/updateMe",
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${user?.token}`,
+          },
+          body: formData,
         }
-      }, 100); // Small delay to ensure alert is shown
-      
+      );
+
+      const data = await response.json();
+      // console.log("✅ Update response:", data);
+      setUser({...user, ...data.data.user});
+      // console.log("%%%%%%%" , user?.profilePicture);
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update profile");
+      }
+
+
+      Alert.alert("✅ Success", "Profile updated successfully!");
+
+      // Go back or redirect to profile tab
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/(tabs)/profile");
+      }
     } catch (error: any) {
       console.error("Profile update error:", error);
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to update profile";
-      Alert.alert("Error", errorMessage);
+      Alert.alert("❌ Error", error.message || "Something went wrong");
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
@@ -93,21 +111,13 @@ export default function EditProfileScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.container}
     >
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => {
-            // Try to go back, with fallback to profile tab
-            try {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/(tabs)/profile');
-              }
-            } catch (error) {
-              console.log('Navigation error, using profile tab fallback');
-              router.replace('/(tabs)/profile');
-            }
+            if (router.canGoBack()) router.back();
+            else router.replace("/(tabs)/profile");
           }}
         >
           <ChevronLeft size={24} color={colors.text} />
@@ -115,46 +125,40 @@ export default function EditProfileScreen() {
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <View style={{ width: 24 }} />
       </View>
-      
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Profile Picture */}
         <View style={styles.avatarContainer}>
           <Image
-            source={{ uri: avatar }}
+            source={{ uri: avatar || "https://via.placeholder.com/120" }}
             style={styles.avatar}
             contentFit="cover"
           />
-          <TouchableOpacity
-            style={styles.cameraButton}
-            onPress={pickImage}
-          >
-            <Text style={{ color: colors.white, fontSize: 16 }}>📷</Text>
+          <TouchableOpacity style={styles.fileInputButton} onPress={pickImage}>
+            <Pencil size={18} color={colors.white} />
           </TouchableOpacity>
         </View>
-        
+
+        {/* Form Inputs */}
         <View style={styles.form}>
           <Input
             label="First Name"
             placeholder="Enter your first name"
             value={firstName}
             onChangeText={setFirstName}
-            autoCapitalize="words"
           />
-          
+
           <Input
             label="Last Name"
             placeholder="Enter your last name"
             value={lastName}
             onChangeText={setLastName}
-            autoCapitalize="words"
           />
-          
+
           <Button
-            title="Save Changes"
+            title={loading ? "Saving..." : "Save Changes"}
             onPress={handleSave}
-            loading={isSubmitting}
+            loading={loading}
             variant="primary"
             fullWidth
             style={styles.saveButton}
@@ -165,6 +169,7 @@ export default function EditProfileScreen() {
   );
 }
 
+// ===================== STYLES =====================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -194,25 +199,32 @@ const styles = StyleSheet.create({
   avatarContainer: {
     alignItems: "center",
     marginBottom: 24,
-    position: "relative",
   },
   avatar: {
     width: 120,
     height: 120,
     borderRadius: 60,
   },
-  cameraButton: {
-    position: "absolute",
-    bottom: 0,
-    right: "35%",
+  fileInputButton: {
+    width: 40,
+    height: 40,
+    marginTop: 10,
     backgroundColor: colors.primary,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
     borderColor: colors.white,
+    transform: [{ translateX: 30 } , { translateY: -50 }],
+
+
+  },
+  fileInputText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: "600",
   },
   form: {
     backgroundColor: colors.white,
