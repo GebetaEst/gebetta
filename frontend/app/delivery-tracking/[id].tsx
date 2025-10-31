@@ -469,10 +469,10 @@ function usePreventBackNavigation(router: any) {
       return true; // Prevent default behavior
     };
 
-    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
 
     return () => {
-      subscription.remove();
+      BackHandler.removeEventListener('hardwareBackPress', onBackPress);
     };
   }, [router]);
 }
