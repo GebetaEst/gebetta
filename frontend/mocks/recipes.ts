@@ -1,19 +1,16 @@
 import { id } from "zod/v4/locales";
 
 export const popularTags = [
-  "traditional",
-  "spicy",
-  "vegan",
-  "breakfast",
-  "lunch",
-  "dinner",
-  "Ethiopian",
+  "All",
+  "Breakfast",
+  "Lunch",
+  "Dinner",
+  "Dessert",
+  "Traditional",
+  "Fast Food",
+  "Spicy",
+  "Vegan",
   "Italian",
-  "dessert",
-  "quick",
-  "festive",
-  "healthy",
-  "gluten-free",
 ];
 
 export const regions = [

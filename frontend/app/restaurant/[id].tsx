@@ -27,16 +27,18 @@ import * as Location from 'expo-location';
 import colors from '../../constants/colors';
 import typography from '../../constants/typography';
 import { useCartStore } from '../../store/cartStore';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const { width } = Dimensions.get('window');
 
 // Restaurant interface based on backend schema
 interface Restaurant {
-  _id: string;
+  id?: string;
+  _id?: string;
   name: string;
-  slug: string;
+  slug?: string;
   location: {
-    type: string;
+    type?: string;
     coordinates: [number, number];
     address: string;
     description?: string;
@@ -44,21 +46,31 @@ interface Restaurant {
   cuisineTypes: string[];
   ratingAverage: number;
   ratingQuantity: number;
-  openHours: string;
+  openHours?: string;
   isDeliveryAvailable: boolean;
   isOpenNow: boolean;
   imageCover: string;
-  deliveryRadiusMeters: number;
+  deliveryRadiusMeters?: number;
   description: string;
-  license: string;
-  managerId: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    role: string;
+  shortDescription?: string;
+  license?: string;
+  // Support both old and new manager formats
+  managerId?: {
+    _id?: string;
+    id?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    role?: string;
   } | string;
-  reviewCount: number;
+  manager?: {
+    id: string;
+    name: string;
+    phone: string;
+  } | string;
+  reviewCount?: number;
+  ratings?: any[];
+  reviews?: any[];
 }
 
 // Menu interface based on API response
@@ -101,6 +113,9 @@ interface CartItem {
 export default function RestaurantDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  
+  // Log the ID immediately when component loads
+  
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menus, setMenus] = useState<Menu[]>([]);
   const [foodItems, setFoodItems] = useState<{ [menuId: string]: Food[] }>({});
@@ -116,20 +131,60 @@ export default function RestaurantDetailScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const baseUrl = 'https://gebeta-delivery1.onrender.com';
-  const JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2EyNDE5ZmM2Y2IyYzk5MzIxMjQ3NSIsImlhdCI6MTc1MzA4MDI3NSwiZXhwIjoxNzYwODU1Njc1fQ.vRs1UMH4h5L2WBZtJPOpfbJkYAAjXsIVHqYZ3_fIZAc';
+  const { user } = useAuthStore();
+  const JWT_TOKEN = user?.token;
 
   // Fetch restaurant details
   const fetchRestaurant = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await axios.get(`${baseUrl}/api/v1/restaurants/${id}`);
-      const restaurantData = response.data.data.restaurant;
+      
+      console.log('========================================');
+      console.log('RESTAURANT/[ID].TSX - fetchRestaurant called');
+      console.log('RESTAURANT/[ID].TSX - ID value:', id);
+      console.log('RESTAURANT/[ID].TSX - ID type:', typeof id);
+      
+      const url = `${baseUrl}/api/v1/restaurants/${id}`;
+      console.log('RESTAURANT/[ID].TSX - Full API URL:', url);
+      console.log('RESTAURANT/[ID].TSX - Making API call...');
+      
+      const response = await axios.get(url);
+      
+      console.log('RESTAURANT/[ID].TSX - API Response received!');
+      console.log('RESTAURANT/[ID].TSX - Response status:', response.status);
+      console.log('RESTAURANT/[ID].TSX - Response data:', response.data);
+      console.log('========================================');
+      
+      // Handle different API response structures
+      let restaurantData = null;
+      if (response.data.data?.restaurant) {
+        // Old structure: { data: { restaurant: {...} } }
+        restaurantData = response.data.data.restaurant;
+      } else if (response.data.data && typeof response.data.data === 'object') {
+        // New structure: { data: {...} } - direct restaurant object
+        restaurantData = response.data.data;
+      } else if (response.data.restaurant) {
+        // Alternative structure: { restaurant: {...} }
+        restaurantData = response.data.restaurant;
+      }
+      
       if (!restaurantData) {
+        console.error('RESTAURANT/[ID].TSX - Could not find restaurant data in response');
         throw new Error('No restaurant data found');
       }
+      
+      console.log('RESTAURANT/[ID].TSX - Extracted restaurant data:', restaurantData);
       setRestaurant(restaurantData);
     } catch (err: any) {
+      console.log('========================================');
+      console.log('RESTAURANT/[ID].TSX - ERROR occurred!');
+      console.log('RESTAURANT/[ID].TSX - Error message:', err.message);
+      console.log('RESTAURANT/[ID].TSX - Error response status:', err.response?.status);
+      console.log('RESTAURANT/[ID].TSX - Error response data:', err.response?.data);
+      console.log('RESTAURANT/[ID].TSX - Full error:', err);
+      console.log('========================================');
+      
       setError(err.message || 'Failed to load restaurant details');
       setRestaurant(null);
     } finally {
@@ -142,8 +197,13 @@ export default function RestaurantDetailScreen() {
     try {
       setIsLoadingMenus(true);
       setMenuError(null);
+      
+      // Use the restaurant ID (handle both _id and id formats)
+      const restaurantId = restaurant?.id || restaurant?._id || id;
+      console.log('RESTAURANT/[ID].TSX - Fetching menus for restaurant ID:', restaurantId);
+      
       const response = await axios.get(
-        `${baseUrl}/api/v1/food-menus?restaurantId=${id}`
+        `${baseUrl}/api/v1/food-menus?restaurantId=${restaurantId}`
       );
       const menuData = response.data.data || [];
       setMenus(menuData);
@@ -191,118 +251,15 @@ export default function RestaurantDetailScreen() {
   };
 
   // Generate fallback description and ingredients based on food name
-  const getFoodDescription = (food: Food) => {
-    if (food.description) {
-      return food.description;
-    }
-    
-    const foodName = food.foodName.toLowerCase();
-    
-    // Ethiopian dishes
-    if (foodName.includes('doro') || foodName.includes('chicken')) {
-      return 'Traditional Ethiopian chicken stew with berbere spice, served with injera bread';
-    }
-    if (foodName.includes('tibs') || foodName.includes('beef')) {
-      return 'Sautéed beef with onions, peppers, and Ethiopian spices';
-    }
-    if (foodName.includes('injera')) {
-      return 'Traditional sourdough flatbread made from teff flour';
-    }
-    if (foodName.includes('kitfo')) {
-      return 'Minced raw beef seasoned with mitmita spice and clarified butter';
-    }
-    if (foodName.includes('shiro')) {
-      return 'Spiced chickpea flour stew with onions and garlic';
-    }
-    if (foodName.includes('gomen')) {
-      return 'Sautéed collard greens with onions and spices';
-    }
-    
-    // Italian dishes
-    if (foodName.includes('pizza')) {
-      return 'Wood-fired pizza with fresh ingredients and authentic Italian flavors';
-    }
-    if (foodName.includes('pasta')) {
-      return 'Fresh pasta with rich sauce and premium ingredients';
-    }
-    if (foodName.includes('lasagna')) {
-      return 'Layered pasta with meat sauce, cheese, and béchamel';
-    }
-    
-    // Fast food
-    if (foodName.includes('burger')) {
-      return 'Juicy beef patty with fresh vegetables and special sauce';
-    }
-    if (foodName.includes('fries')) {
-      return 'Crispy golden fries seasoned to perfection';
-    }
-    if (foodName.includes('chicken')) {
-      return 'Tender chicken prepared with signature spices';
-    }
-    
-    // General fallback
-    return 'Delicious dish prepared with fresh, quality ingredients';
-  };
-
-  const getFoodIngredients = (food: Food) => {
-    if (food.ingredients) {
-      return food.ingredients;
-    }
-    
-    const foodName = food.foodName.toLowerCase();
-    
-    // Ethiopian dishes
-    if (foodName.includes('doro') || foodName.includes('chicken')) {
-      return 'Chicken, Berbere spice, Onions, Garlic, Ginger, Clarified butter';
-    }
-    if (foodName.includes('tibs') || foodName.includes('beef')) {
-      return 'Beef, Onions, Peppers, Ethiopian spices, Clarified butter';
-    }
-    if (foodName.includes('injera')) {
-      return 'Teff flour, Water, Salt';
-    }
-    if (foodName.includes('kitfo')) {
-      return 'Raw beef, Mitmita spice, Clarified butter, Cottage cheese';
-    }
-    if (foodName.includes('shiro')) {
-      return 'Chickpea flour, Onions, Garlic, Berbere spice, Oil';
-    }
-    if (foodName.includes('gomen')) {
-      return 'Collard greens, Onions, Garlic, Ginger, Oil';
-    }
-    
-    // Italian dishes
-    if (foodName.includes('pizza')) {
-      return 'Dough, Tomato sauce, Mozzarella, Fresh basil, Olive oil';
-    }
-    if (foodName.includes('pasta')) {
-      return 'Fresh pasta, Tomato sauce, Parmesan, Basil, Olive oil';
-    }
-    if (foodName.includes('lasagna')) {
-      return 'Pasta sheets, Ground beef, Ricotta, Mozzarella, Tomato sauce';
-    }
-    
-    // Fast food
-    if (foodName.includes('burger')) {
-      return 'Beef patty, Lettuce, Tomato, Onion, Special sauce, Bun';
-    }
-    if (foodName.includes('fries')) {
-      return 'Potatoes, Salt, Oil';
-    }
-    if (foodName.includes('chicken')) {
-      return 'Chicken, Flour, Spices, Oil';
-    }
-    
-    // General fallback
-    return 'Fresh ingredients, Spices, Herbs';
-  };
+  
 
   // Add item to cart with selected quantity
   const handleAddToCart = (food: Food) => {
     const quantity = quantitySelections[food._id] || 1;
     
-    // Use global cart store with proper data structure
-    addToCart(restaurant?._id || '', food._id, quantity, undefined, {
+    // Use global cart store with proper data structure (handle both id formats)
+    const restaurantId = restaurant?.id || restaurant?._id || '';
+    addToCart(restaurantId, food._id, quantity, undefined, {
       name: food.foodName,
       price: food.price,
     });
@@ -513,7 +470,9 @@ export default function RestaurantDetailScreen() {
               </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Hours</Text>
-                <Text style={styles.detailText}>{restaurant.openHours}</Text>
+                <Text style={styles.detailText}>
+                  {restaurant.openHours || '9:00 AM - 10:00 PM'}
+                </Text>
               </View>
             </View>
 
@@ -526,7 +485,7 @@ export default function RestaurantDetailScreen() {
                 <Text style={styles.detailLabel}>Delivery</Text>
                 <Text style={styles.detailText}>
                   {restaurant.isDeliveryAvailable
-                    ? `${Math.ceil(restaurant.deliveryRadiusMeters / 100)}-${Math.ceil(restaurant.deliveryRadiusMeters / 100) + 15} min`
+                    ? `${Math.ceil((restaurant.deliveryRadiusMeters || 5000) / 100)}-${Math.ceil((restaurant.deliveryRadiusMeters || 5000) / 100) + 15} min`
                     : 'Not available'}
                 </Text>
               </View>
@@ -540,7 +499,7 @@ export default function RestaurantDetailScreen() {
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Radius</Text>
                 <Text style={styles.detailText}>
-                  {(restaurant.deliveryRadiusMeters / 1000).toFixed(1)} km
+                  {((restaurant.deliveryRadiusMeters || 5000) / 1000).toFixed(1)} km
                 </Text>
               </View>
             </View>
@@ -578,7 +537,7 @@ export default function RestaurantDetailScreen() {
                         <TouchableOpacity 
                           key={food._id} 
                           style={styles.foodItem}
-                          onPress={() => router.push(`/menu-item/${restaurant?._id}/${food._id}`)}
+                          onPress={() => router.push(`/menu-item/${restaurant?.id || restaurant?._id}/${food._id}`)}
                           activeOpacity={0.7}
                         >
                           <View style={styles.foodImageContainer}>
@@ -608,15 +567,7 @@ export default function RestaurantDetailScreen() {
                                 ${food.price.toFixed(2)}
                               </Text>
                             </View>
-                            
-                            <Text style={styles.foodDescription} numberOfLines={2}>
-                              {getFoodDescription(food)}
-                            </Text>
-                            
-                            <Text style={styles.foodIngredients} numberOfLines={1}>
-                              {getFoodIngredients(food)}
-                            </Text>
-                            
+
                             {food.status === 'Available' && (
                               <View style={styles.foodActions}>
                                 <View style={styles.quantitySelector}>

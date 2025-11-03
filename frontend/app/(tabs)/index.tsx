@@ -11,10 +11,12 @@ import { Recipe } from "@/types/recipe";
 import { Restaurant } from "@/types/restaurant";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { ChevronRight, MapPin, Clock, ShoppingBag, Search } from "lucide-react-native";
+import { ChevronRight, MapPin, Clock, ShoppingBag, Search, Star } from "lucide-react-native";
 import React, { useState, useCallback, useEffect } from "react";
 import * as Location from 'expo-location';
 import axios from "axios";
+
+
 // statusBar
 import { StatusBar } from "expo-status-bar";
 import {
@@ -36,14 +38,27 @@ function toAppRestaurant(apiRestaurant: any): Restaurant {
   const location = apiRestaurant.location;
   const coordinates = location?.coordinates || [0, 0];
   
+  // Handle both old (_id) and new (id) API formats
+  const restaurantId = apiRestaurant.id || apiRestaurant._id;
+  
+  // Handle both old (managerId) and new (manager) formats
+  let managerId = '';
+  if (apiRestaurant.manager) {
+    managerId = typeof apiRestaurant.manager === 'object' 
+      ? (apiRestaurant.manager?.id || apiRestaurant.manager?._id || '') 
+      : apiRestaurant.manager;
+  } else if (apiRestaurant.managerId) {
+    managerId = typeof apiRestaurant.managerId === 'object' 
+      ? (apiRestaurant.managerId?._id || apiRestaurant.managerId?.id || '') 
+      : apiRestaurant.managerId;
+  }
+  
   return {
-    id: apiRestaurant._id,
-    _id: apiRestaurant._id,
+    id: restaurantId,
+    _id: restaurantId,
     name: apiRestaurant.name,
     slug: apiRestaurant.slug || apiRestaurant.name.toLowerCase().replace(/\s+/g, '-'),
-    ownerId: typeof apiRestaurant.managerId === 'object' 
-      ? (apiRestaurant.managerId?._id || '') 
-      : (apiRestaurant.managerId || ''),
+    ownerId: managerId,
     imageUrl: apiRestaurant.imageCover || '',
     imageCover: apiRestaurant.imageCover || '',
     address: location?.address || 'Address not available',
@@ -56,16 +71,14 @@ function toAppRestaurant(apiRestaurant: any): Restaurant {
     isOpen: !!apiRestaurant.isOpenNow,
     isOpenNow: !!apiRestaurant.isOpenNow,
     isDeliveryAvailable: !!apiRestaurant.isDeliveryAvailable,
-    active: !!apiRestaurant.active,
+    active: apiRestaurant.active !== undefined ? !!apiRestaurant.active : true,
     description: apiRestaurant.description || '',
     deliveryRadiusMeters: apiRestaurant.deliveryRadiusMeters || 5000,
     license: apiRestaurant.license || 'N/A',
-    managerId: typeof apiRestaurant.managerId === 'object' 
-      ? (apiRestaurant.managerId?._id || '') 
-      : (apiRestaurant.managerId || ''),
+    managerId: managerId,
     openHours: apiRestaurant.openHours || '9:00 AM - 10:00 PM',
-    reviews: apiRestaurant.reviews || [],
-    reviewCount: apiRestaurant.reviewCount || 0,
+    reviews: apiRestaurant.reviews || apiRestaurant.ratings || [],
+    reviewCount: apiRestaurant.reviewCount || (apiRestaurant.ratings?.length || 0),
     shortDescription: apiRestaurant.shortDescription || 
       (apiRestaurant.description ? 
         apiRestaurant.description.substring(0, 100) + 
@@ -84,6 +97,30 @@ function toAppRestaurant(apiRestaurant: any): Restaurant {
 
 const { width } = Dimensions.get("window");
 
+// Helper function to render star ratings
+const renderStars = (rating: number) => {
+  const stars = [];
+  const fullStars = Math.floor(rating);
+  const hasHalfStar = rating % 1 >= 0.5;
+  
+  for (let i = 0; i < 5; i++) {
+    if (i < fullStars) {
+      stars.push(
+        <Star key={i} size={14} color={colors.secondary} fill={colors.secondary} />
+      );
+    } else if (i === fullStars && hasHalfStar) {
+      stars.push(
+        <Star key={i} size={14} color={colors.secondary} fill={colors.secondary} opacity={0.5} />
+      );
+    } else {
+      stars.push(
+        <Star key={i} size={14} color={colors.lightText} />
+      );
+    }
+  }
+  return stars;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const isTablet = width > 768;
@@ -98,6 +135,8 @@ export default function HomeScreen() {
   const [featuredRecipes, setFeaturedRecipes] = useState<Recipe[]>([]);
   const [realRestaurants, setRealRestaurants] = useState<Restaurant[]>([]);
   const [isLoadingRealRestaurants, setIsLoadingRealRestaurants] = useState(true);
+  const [foods, setFoods] = useState<any[]>([]);
+  const [isLoadingFoods, setIsLoadingFoods] = useState(true);
   
   // Animation values for enhanced UI
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -110,27 +149,24 @@ export default function HomeScreen() {
   const fetchRealRestaurants = async () => {
     try {
       setIsLoadingRealRestaurants(true);
-      console.log('Fetching real restaurants for home page...');
       const response = await axios.get('https://gebeta-delivery1.onrender.com/api/v1/restaurants');
-      console.log('Home page API Response:', response);
+      console.log('{tabs}/index.tsx Home page API Response:', response);
       
       let restaurantsData = [];
       
-      if (response?.data?.data?.restaurants && Array.isArray(response.data.data.restaurants)) {
-        console.log('Found restaurants in response.data.data.restaurants');
+      // New API structure: data is directly an array
+      if (Array.isArray(response?.data?.data)) {
+        restaurantsData = response.data.data;
+      } else if (response?.data?.data?.restaurants && Array.isArray(response.data.data.restaurants)) {
         restaurantsData = response.data.data.restaurants;
       } else if (Array.isArray(response?.data)) {
-        console.log('Found restaurants directly in response.data');
         restaurantsData = response.data;
-      } else if (Array.isArray(response?.data?.data)) {
-        console.log('Found restaurants in response.data.data');
-        restaurantsData = response.data.data;
       } else {
         console.warn('Unexpected API response structure:', response?.data);
         throw new Error('Unexpected data format received from server');
       }
       
-      console.log('Setting real restaurants data for home page:', restaurantsData);
+      console.log('{tabs}/index.tsx 133 Setting real restaurants data for home page:', restaurantsData);
       const convertedRestaurants = restaurantsData.map(toAppRestaurant);
       setRealRestaurants(convertedRestaurants);
       
@@ -140,6 +176,41 @@ export default function HomeScreen() {
       setRealRestaurants(mockRestaurants);
     } finally {
       setIsLoadingRealRestaurants(false);
+    }
+  };
+
+  // Fetch foods from API
+  const fetchFoods = async () => {
+    try {
+      setIsLoadingFoods(true);
+      console.log('Fetching foods from API...');
+      const response = await axios.get('https://gebeta-delivery1.onrender.com/api/v1/foods');
+      console.log('Foods API Response:', response);
+      
+      let foodsData = [];
+      
+      if (response?.data?.data?.foods && Array.isArray(response.data.data.foods)) {
+        console.log('Found foods in response.data.data.foods');
+        foodsData = response.data.data.foods;
+      } else if (Array.isArray(response?.data?.data)) {
+        console.log('Found foods in response.data.data');
+        foodsData = response.data.data;
+      } else if (Array.isArray(response?.data)) {
+        console.log('Found foods directly in response.data');
+        foodsData = response.data;
+      } else {
+        console.warn('Unexpected foods API response structure:', response?.data);
+        throw new Error('Unexpected data format received from server');
+      }
+      
+      console.log('Setting foods data:', foodsData);
+      setFoods(foodsData);
+      
+    } catch (err: unknown) {
+      console.error('Error fetching foods:', err);
+      setFoods([]);
+    } finally {
+      setIsLoadingFoods(false);
     }
   };
 
@@ -165,9 +236,10 @@ export default function HomeScreen() {
     return () => clearInterval(rotationInterval);
   }, [recipes, getRandomRecipes]);
 
-  // Fetch real restaurants on component mount
+  // Fetch real restaurants and foods on component mount
   useEffect(() => {
     fetchRealRestaurants();
+    fetchFoods();
     
     // Start entrance animations
     Animated.parallel([
@@ -197,20 +269,16 @@ export default function HomeScreen() {
   
   const featuredRecipe = recipes[0];
   const popularRecipes = recipes.slice(1, 5);
-  const featuredRestaurants = realRestaurants.length > 0 ? realRestaurants : mockRestaurants;
-  
-  // Filter recipes and restaurants based on selected category
-  const filteredRecipes = selectedCategory
-    ? recipes.filter((recipe) => recipe.tags.includes(selectedCategory))
-    : popularRecipes;
-    
-  const filteredRestaurants = selectedCategory
-    ? realRestaurants.filter((restaurant) => 
-        restaurant.cuisineTypes.some(cuisine => 
-          cuisine.toLowerCase().includes(selectedCategory.toLowerCase())
-        )
+
+  // Show all restaurants from backend without filtering
+  const filteredRestaurants = realRestaurants;
+
+  // Filter foods based on selected category (menuType)
+  const filteredFoods = selectedCategory && selectedCategory.toLowerCase() !== 'all'
+    ? foods.filter((food) => 
+        food.menuId?.menuType?.toLowerCase().includes(selectedCategory.toLowerCase())
       )
-    : realRestaurants;
+    : foods;
 
   const handleCategoryPress = (category: string) => {
     if (selectedCategory === category) {
@@ -236,15 +304,15 @@ export default function HomeScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Refresh real restaurants data
-    await fetchRealRestaurants();
+    // Refresh real restaurants and foods data
+    await Promise.all([fetchRealRestaurants(), fetchFoods()]);
     // In a real app, this would fetch fresh data from API
     setTimeout(() => {
       setRefreshing(false);
     }, 1500);
   };
 
-  const isLoading = recipesLoading || restaurantsLoading || isLoadingRealRestaurants;
+  const isLoading = recipesLoading || restaurantsLoading || isLoadingRealRestaurants || isLoadingFoods;
 
   if (isLoading && !refreshing) {
     return (
@@ -257,7 +325,7 @@ export default function HomeScreen() {
 
   return (
     <>
-    <StatusBar style="light" />
+    <StatusBar style="dark" />
     <View style={styles.container}>
       {/* Sticky Search Bar with Location and Profile Avatar */}
       <Animated.View 
@@ -272,79 +340,23 @@ export default function HomeScreen() {
         {/* Location Button */}
         <TouchableOpacity
           style={styles.topLocationButton}
-          onPress={async () => {
-            try {
-              console.log('Requesting location permissions...');
-              const { status } = await Location.requestForegroundPermissionsAsync();
-              console.log('Location permission status:', status);
-              
-              if (status === "granted") {
-                console.log('Getting current position...');
-                const location = await Location.getCurrentPositionAsync({});
-                console.log('Got location:', location);
-                
-                console.log('Reverse geocoding...');
-                const geocode = await Location.reverseGeocodeAsync(location.coords);
-                console.log('Geocode results:', geocode);
-                
-                if (geocode && geocode.length > 0) {
-                  const { city, region } = geocode[0];
-                  const locationString = `${city || ''}${city && region ? ', ' : ''}${region || ''}`.trim();
-                  console.log('Formatted location string:', locationString);
-                  
-                  if (!user) {
-                    console.error('No user object found');
-                    return;
-                  }
-                  
-                  // Create a new default address with the location
-                  const newAddress = {
-                    _id: `addr_${Date.now()}`,
-                    Name: locationString,
-                    isDefault: true,
-                    label: 'Home' as const,
-                    additionalInfo: city || 'Unknown City'
-                  };
-                  
-                  console.log('New address to add:', newAddress);
-                  
-                  // Update user with new address
-                  const updatedUser = {
-                    ...user,
-                    addresses: [newAddress, ...(user.addresses || []).map(addr => ({ ...addr, isDefault: false }))]
-                  };
-                  
-                  await setUser(updatedUser);
-                  console.log('User updated successfully');
-                } else {
-                  console.warn('No geocode results found');
-                }
-              } else {
-                console.warn('Location permission denied');
-              }
-            } catch (error) {
-              console.error('Error in location handling:', error);
-            }
-          }}
+          
         >
           <Text style={styles.topLocationText}>
-            📍 {user?.addresses?.find(addr => addr.isDefault)?.Name 
-              ? `${user.addresses.find(addr => addr.isDefault)?.Name}`
-              : ""}
+             
           </Text>
         </TouchableOpacity>
 
         <View style={styles.searchBarRow}>
-          <View style={styles.searchBar}>
-            <Search size={20} color={colors.lightText} style={styles.searchIcon} />
-            <Text style={styles.searchPlaceholder}>Search for recipes, restaurants...</Text>
-          </View>
           <TouchableOpacity onPress={() => router.push("/profile")} style={styles.topAvatarContainer}>
             <Image
-              source={{ uri: user?.profilePicture || "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=200" }}
+              source={{ uri: user?.profilePicture || "https://placehold.co/600x600/7b3e19/ffffff?font=playfair-display&text=G" }}
               style={styles.topAvatar}
             />
           </TouchableOpacity>
+            <Text style={styles.searchPlaceholder}>
+              {user?.firstName ? ` Hello ${user.firstName}` : user?.phone || ""}
+            </Text>
         </View>
       </Animated.View>
 
@@ -356,6 +368,7 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+
        {/* Header */}
        <View style={styles.headerGradient}>
          <Animated.View 
@@ -386,7 +399,6 @@ export default function HomeScreen() {
               onPress={() => setFeaturedRecipes(getRandomRecipes(1))}
               style={styles.refreshButton}
             >
-              <Text style={styles.seeAll}>🔄 Refresh</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -429,21 +441,23 @@ export default function HomeScreen() {
           contentContainerStyle={styles.categoriesScrollContent}
         >
           {popularTags.map((tag) => (
+           <>
             <CategoryPill
               key={tag}
               title={tag}
               selected={selectedCategory === tag}
               onPress={() => handleCategoryPress(tag)}
             />
+           </>
           ))}
         </ScrollView>
       </View>
 
-                           {/* Popular Recipes */}
+                           {/* Popular Foods */}
         <View style={styles.popularContainer}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, styles.sectionTitleInHeader]}>
-              {selectedCategory ? `${selectedCategory} Recipes` : "🔥 Popular Recipes"}
+              {selectedCategory ? `${selectedCategory} Foods` : "🔥 Popular Foods"}
             </Text>
             <TouchableOpacity
               style={styles.seeAllButton}
@@ -463,29 +477,29 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.recipesScrollContent}
           >
-            {filteredRecipes.map((recipe) => (
+            {filteredFoods.map((food) => (
               <TouchableOpacity 
-                key={recipe.id}
+                key={food._id}
                 style={styles.recipeCard}
-                onPress={() => router.push(`/recipe/${recipe.id}` as any)}
+                onPress={() => router.push(`/recipe/${food._id}` as any)}
               >
                 <Image
-                  source={{ uri: recipe.imageUrl }}
+                  source={{ uri: food.imageCover }}
                   style={styles.recipeImage}
                 />
                 <View style={styles.recipeInfo}>
                   <Text style={styles.recipeTitle} numberOfLines={2}>
-                    {recipe.title}
+                    {food.foodName}
                   </Text>
                   <View style={styles.recipeMeta}>
                     <View style={styles.ratingContainer}>
                       <Clock size={14} color={colors.secondary} />
-                      <Text style={styles.ratingText}>{recipe.cookTime || '30 min'}</Text>
+                      <Text style={styles.ratingText}>{food.cookingTimeMinutes} min</Text>
                     </View>
                     <View style={styles.locationContainer}>
                       <MapPin size={14} color={colors.lightText} />
                       <Text style={styles.locationText} numberOfLines={1}>
-                        {recipe.difficulty || 'Easy'}
+                        ${food.price}
                       </Text>
                     </View>
                   </View>
@@ -499,7 +513,7 @@ export default function HomeScreen() {
        <View style={styles.restaurantsContainer}>
          <View style={styles.sectionHeader}>
            <Text style={[styles.sectionTitle, styles.sectionTitleInHeader]}>
-             {selectedCategory ? `${selectedCategory} Restaurants` : "🍽️ Popular Restaurants"}
+              Restaurants
            </Text>
            <TouchableOpacity
              style={styles.seeAllButton}
@@ -514,10 +528,12 @@ export default function HomeScreen() {
            data={filteredRestaurants}
            keyExtractor={(item) => item.id}
            renderItem={({ item }) => (
-             <TouchableOpacity 
-               style={styles.restaurantCard}
-               onPress={() => router.push(`/restaurant/${item.id}`)}
-             >
+            <TouchableOpacity 
+              style={styles.restaurantCard}
+              onPress={() => {
+                router.push(`/restaurant/${item.id}`);
+              }}
+            >
                <Image
                  source={{ uri: item.imageUrl }}
                  style={styles.restaurantImage}
@@ -526,18 +542,17 @@ export default function HomeScreen() {
                  <Text style={styles.restaurantName} numberOfLines={1}>
                    {item.name}
                  </Text>
-                 <View style={styles.restaurantMeta}>
-                   <View style={styles.ratingContainer}>
-                     <Clock size={14} color={colors.secondary} />
-                     <Text style={styles.ratingText}>{item.rating}</Text>
-                   </View>
-                   <View style={styles.locationContainer}>
-                     <MapPin size={14} color={colors.lightText} />
-                     <Text style={styles.locationText} numberOfLines={1}>
-                       {item.address}
-                     </Text>
-                   </View>
-                 </View>
+                  <View style={styles.locationContainer}>
+                    <MapPin size={14} color={colors.lightText} />
+                    <Text style={styles.locationText} numberOfLines={1}>
+                      {item.address? item.address : "N/A" }
+                    </Text>
+                  </View>
+                <View style={styles.restaurantMeta}>
+                  <View style={styles.ratingContainer}>
+                    {renderStars(item.rating || 0)}
+                  </View>
+                </View>
                </View>
              </TouchableOpacity>
            )}
@@ -568,12 +583,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+
   },
   scrollContainer: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 90, // Space for sticky search bar with location
+    paddingTop: 90,
   },
   stickySearchContainer: {
     position: 'absolute',
@@ -593,15 +609,15 @@ const styles = StyleSheet.create({
   },
   searchBarRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    alignItems: 'flex-end',
+    gap: 10,
   },
   topAvatarContainer: {
     padding: 2,
   },
   topAvatar: {
-    width: 40,
-    height: 40,
+    width: 45,
+    height: 45,
     borderRadius: 20,
   },
   topLocationButton: {
@@ -799,6 +815,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     marginBottom: width > 768 ? 16 : 12,
+
   },
   seeAllButton: {
     flexDirection: 'row',
@@ -895,7 +912,9 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: {
     ...typography.bodySmall,
-    color: colors.lightText,
+    fontWeight: '600',
+    fontSize:20,
+    color:"#000000",
   },
   floatingCartButton: {
     position: 'absolute',
