@@ -654,13 +654,13 @@ export default function RestaurantDetailScreen() {
                             <View style={styles.foodHeader}>
                               <Text style={styles.foodName} numberOfLines={1}>{food.foodName}</Text>
                               <Text style={styles.foodPrice}>
-                                ${food.price.toFixed(2)}
+                                {food.price.toFixed(2)} birr
                               </Text>
                             </View>
 
                             {food.status === 'Available' && (
                               <View style={styles.foodActions}>
-                                <View style={styles.quantitySelector}>
+                                {/* <View style={styles.quantitySelector}>
                                   <TouchableOpacity
                                     style={styles.quantityButton}
                                     onPress={(e) => {
@@ -684,7 +684,7 @@ export default function RestaurantDetailScreen() {
                                   >
                                     <FontAwesome name="plus" size={14} color={colors.text} />
                                   </TouchableOpacity>
-                                </View>
+                                </View> */}
                                 
                                 <TouchableOpacity
                                   style={styles.addToCartButton}
@@ -1015,10 +1015,11 @@ const styles = StyleSheet.create({
     minHeight: 120,
   },
   foodHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
     alignItems: 'flex-start',
     marginBottom: 4,
+    gap: 4,
   },
   foodName: {
     ...typography.subtitle,
@@ -1048,8 +1049,7 @@ const styles = StyleSheet.create({
   },
   foodActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   quantitySelector: {
     flexDirection: 'row',
