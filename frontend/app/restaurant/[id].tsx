@@ -24,6 +24,7 @@ import {
 } from 'lucide-react-native';
 import axios from 'axios';
 import * as Location from 'expo-location';
+import { getDistance } from 'geolib';
 import colors from '../../constants/colors';
 import typography from '../../constants/typography';
 import { useCartStore } from '../../store/cartStore';
@@ -89,7 +90,7 @@ interface Food {
   foodName: string;
   description?: string;
   price: number;
-  image?: string;
+  imageCover?: string;
   isAvailable: boolean;
   menuId: string;
   ingredients?: string;
@@ -122,6 +123,7 @@ export default function RestaurantDetailScreen() {
   const [quantitySelections, setQuantitySelections] = useState<{ [foodId: string]: number }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMenus, setIsLoadingMenus] = useState(true);
+  const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null);
 
   
   // Use global cart store
@@ -131,8 +133,55 @@ export default function RestaurantDetailScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const baseUrl = 'https://gebeta-delivery1.onrender.com';
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const JWT_TOKEN = user?.token;
+
+  // Calculate distance between user and restaurant
+  const calculateDistance = (): string | null => {
+    // console.log('DISTANCE CALC - User coordinates:', user?.coordinates);
+    // console.log('DISTANCE CALC - Restaurant coordinates:', restaurant?.location?.coordinates);
+    
+    if (!user?.coordinates || !restaurant?.location?.coordinates) {
+      console.log('DISTANCE CALC - Missing coordinates:', {
+        hasUserCoords: !!user?.coordinates,
+        hasRestaurantCoords: !!restaurant?.location?.coordinates
+      });
+      return null;
+    }
+
+    try {
+      const userCoords = {
+        latitude: user.coordinates.latitude,
+        longitude: user.coordinates.longitude,
+      };
+
+      // Restaurant coordinates are in GeoJSON format: [longitude, latitude]
+      const restaurantCoords = {
+        latitude: restaurant.location.coordinates[1],
+        longitude: restaurant.location.coordinates[0],
+      };
+
+      console.log('DISTANCE CALC - Calculating distance between:', { userCoords, restaurantCoords });
+
+      const distanceInMeters = getDistance(userCoords, restaurantCoords);
+      const distanceInKm = distanceInMeters / 1000;
+
+      console.log('DISTANCE CALC - Distance:', { distanceInMeters, distanceInKm });
+
+      // Return formatted distance
+      if (distanceInKm < 1) {
+        return `${distanceInMeters} m`;
+      } else {
+        return `${distanceInKm.toFixed(1)} km`;
+      }
+    } catch (error) {
+      console.error('DISTANCE CALC - Error calculating distance:', error);
+      return null;
+    }
+  };
+
+  const distance = calculateDistance();
+  // console.log('DISTANCE CALC - Final distance:', distance);
 
   // Fetch restaurant details
   const fetchRestaurant = async () => {
@@ -140,21 +189,12 @@ export default function RestaurantDetailScreen() {
       setIsLoading(true);
       setError(null);
       
-      console.log('========================================');
-      console.log('RESTAURANT/[ID].TSX - fetchRestaurant called');
-      console.log('RESTAURANT/[ID].TSX - ID value:', id);
-      console.log('RESTAURANT/[ID].TSX - ID type:', typeof id);
-      
       const url = `${baseUrl}/api/v1/restaurants/${id}`;
-      console.log('RESTAURANT/[ID].TSX - Full API URL:', url);
-      console.log('RESTAURANT/[ID].TSX - Making API call...');
+    
       
       const response = await axios.get(url);
+      // console.log('RESTAURANT/[ID].TSX - Location:', response.data.data.restaurant.location.coordinates);
       
-      console.log('RESTAURANT/[ID].TSX - API Response received!');
-      console.log('RESTAURANT/[ID].TSX - Response status:', response.status);
-      console.log('RESTAURANT/[ID].TSX - Response data:', response.data);
-      console.log('========================================');
       
       // Handle different API response structures
       let restaurantData = null;
@@ -174,16 +214,10 @@ export default function RestaurantDetailScreen() {
         throw new Error('No restaurant data found');
       }
       
-      console.log('RESTAURANT/[ID].TSX - Extracted restaurant data:', restaurantData);
+      // console.log('RESTAURANT/[ID].TSX - Extracted restaurant data:', restaurantData);
       setRestaurant(restaurantData);
     } catch (err: any) {
-      console.log('========================================');
-      console.log('RESTAURANT/[ID].TSX - ERROR occurred!');
-      console.log('RESTAURANT/[ID].TSX - Error message:', err.message);
-      console.log('RESTAURANT/[ID].TSX - Error response status:', err.response?.status);
-      console.log('RESTAURANT/[ID].TSX - Error response data:', err.response?.data);
-      console.log('RESTAURANT/[ID].TSX - Full error:', err);
-      console.log('========================================');
+      
       
       setError(err.message || 'Failed to load restaurant details');
       setRestaurant(null);
@@ -200,7 +234,7 @@ export default function RestaurantDetailScreen() {
       
       // Use the restaurant ID (handle both _id and id formats)
       const restaurantId = restaurant?.id || restaurant?._id || id;
-      console.log('RESTAURANT/[ID].TSX - Fetching menus for restaurant ID:', restaurantId);
+      // console.log('RESTAURANT/[ID].TSX - Fetching menus for restaurant ID:', restaurantId);
       
       const response = await axios.get(
         `${baseUrl}/api/v1/food-menus?restaurantId=${restaurantId}`
@@ -285,12 +319,63 @@ export default function RestaurantDetailScreen() {
 
 
 
+  // Get user location if not available
+  useEffect(() => {
+    const getUserLocation = async () => {
+      try {
+        // console.log('LOCATION - Requesting location permission...');
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        
+        if (status !== 'granted') {
+          // console.log('LOCATION - Permission denied');
+          return;
+        }
+
+        // console.log('LOCATION - Getting current location...');
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        // console.log('LOCATION - Got location:', location.coords);
+
+        // Update user with coordinates
+        if (user) {
+          const updatedUser = {
+            ...user,
+            coordinates: {
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            },
+          };
+          await setUser(updatedUser);
+          // console.log('LOCATION - User coordinates saved:', updatedUser.coordinates);
+        }
+      } catch (error) {
+        console.error('LOCATION - Error getting location:', error);
+      }
+    };
+
+    if (user && !user.coordinates) {
+      // console.log('LOCATION - User has no coordinates, requesting location...');
+      getUserLocation();
+    } else {
+      // console.log('LOCATION - User already has coordinates:', user?.coordinates);
+    }
+  }, [user, setUser]);
+
   useEffect(() => {
     if (id) {
       fetchRestaurant();
       fetchMenus();
     }
   }, [id]);
+
+  // Set the first menu as selected when menus are loaded
+  useEffect(() => {
+    if (menus.length > 0 && !selectedMenuId) {
+      setSelectedMenuId(menus[0]._id);
+    }
+  }, [menus]);
 
   // Handle back navigation
   const handleBackPress = () => {
@@ -355,6 +440,7 @@ export default function RestaurantDetailScreen() {
       >
         {/* Header Image with Gradient */}
         <View style={styles.headerImageContainer}>
+          {/* <View style={styles.overlay}></View> */}
           <ExpoImage
             source={{ uri: restaurant.imageCover }}
             style={styles.headerImage}
@@ -377,21 +463,9 @@ export default function RestaurantDetailScreen() {
             </TouchableOpacity>
             
             <View style={styles.headerRightActions}>
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => Alert.alert('Share', 'Share this restaurant')}
-                accessibilityLabel="Share restaurant"
-              >
-                <FontAwesome name="share" size={20} color={colors.white} />
-              </TouchableOpacity>
+             
               
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => Alert.alert('Favorite', 'Added to favorites')}
-                accessibilityLabel="Add to favorites"
-              >
-                <FontAwesome name="heart" size={20} color={colors.white} />
-              </TouchableOpacity>
+              
               
               <TouchableOpacity
                 style={[styles.headerButton, styles.cartButton]}
@@ -415,13 +489,6 @@ export default function RestaurantDetailScreen() {
           <View style={styles.restaurantHeader}>
             <View style={styles.restaurantTitleSection}>
               <Text style={styles.restaurantName}>{restaurant.name}</Text>
-              <View style={styles.cuisineTags}>
-                {restaurant.cuisineTypes.map((cuisine, index) => (
-                  <View key={index} style={styles.cuisineTag}>
-                    <Text style={styles.cuisineTagText}>{cuisine}</Text>
-                  </View>
-                ))}
-              </View>
             </View>
             
             {/* Status Badge */}
@@ -451,58 +518,51 @@ export default function RestaurantDetailScreen() {
           {/* Restaurant Details Grid */}
           <View style={styles.detailsGrid}>
             {/* Location */}
-            <View style={styles.detailCard}>
-              <View style={styles.detailIconContainer}>
-                <MapPin size={20} color={colors.primary} />
+            {restaurant.location?.address && (
+              <View style={[styles.detailCard, styles.detailCardFull]}>
+                <View style={styles.detailIconContainer}>
+                  <MapPin size={20} color={colors.primary} />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Location</Text>
+                  <Text style={styles.detailText} numberOfLines={2}>
+                    {restaurant.location.address}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Location</Text>
-                <Text style={styles.detailText} numberOfLines={2}>
-                  {restaurant.location.address}
-                </Text>
-              </View>
-            </View>
+            )}
 
-            {/* Open Hours */}
-            <View style={styles.detailCard}>
-              <View style={styles.detailIconContainer}>
-                <Clock size={20} color={colors.primary} />
+            {/* Distance */}
+            {distance && (
+              <View style={styles.detailCard}>
+                <View style={styles.detailIconContainer}>
+                  <FontAwesome name="location-arrow" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Distance</Text>
+                  <Text style={styles.detailText}>{distance}</Text>
+                </View>
               </View>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Hours</Text>
-                <Text style={styles.detailText}>
-                  {restaurant.openHours || '9:00 AM - 10:00 PM'}
-                </Text>
-              </View>
-            </View>
+            )}
 
-            {/* Delivery Info */}
+
+            {/* Delivery Status */}
             <View style={styles.detailCard}>
               <View style={styles.detailIconContainer}>
-                <FontAwesome name="truck" size={20} color={colors.primary} />
+                <FontAwesome name="truck" size={20} color={restaurant.isDeliveryAvailable ? colors.primary : colors.lightText} />
               </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Delivery</Text>
-                <Text style={styles.detailText}>
-                  {restaurant.isDeliveryAvailable
-                    ? `${Math.ceil((restaurant.deliveryRadiusMeters || 5000) / 100)}-${Math.ceil((restaurant.deliveryRadiusMeters || 5000) / 100) + 15} min`
-                    : 'Not available'}
+                <Text style={[
+                  styles.detailText,
+                  !restaurant.isDeliveryAvailable && styles.detailTextDisabled
+                ]}>
+                  {restaurant.isDeliveryAvailable ? 'Available' : 'Not available only pickup and Dining in'}
                 </Text>
               </View>
             </View>
 
-            {/* Delivery Radius */}
-            <View style={styles.detailCard}>
-              <View style={styles.detailIconContainer}>
-                <FontAwesome name="map" size={20} color={colors.primary} />
-              </View>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Radius</Text>
-                <Text style={styles.detailText}>
-                  {((restaurant.deliveryRadiusMeters || 5000) / 1000).toFixed(1)} km
-                </Text>
-              </View>
-            </View>
+            
           </View>
 
 
@@ -529,11 +589,41 @@ export default function RestaurantDetailScreen() {
             ) : menus.length === 0 ? (
               <Text style={styles.emptyText}>No menus available</Text>
             ) : (
-              menus.map((menu) => (
-                <View key={menu._id} style={styles.menuContainer}>
-                  <Text style={styles.menuTitle}>{menu.menuType}</Text>
-                  {foodItems[menu._id]?.length > 0 ? (
-                    foodItems[menu._id].map((food) => (
+              <>
+                {/* Horizontal Menu Tabs */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.menuTabsContainer}
+                  contentContainerStyle={styles.menuTabsContent}
+                >
+                  {menus.map((menu , index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.menuTab,
+                        selectedMenuId === menu._id && styles.menuTabActive,
+                      ]}
+                      onPress={() => setSelectedMenuId(menu._id)}
+                      accessibilityLabel={`Select ${menu.menuType} menu`}
+                    >
+                      <Text
+                        style={[
+                          styles.menuTabText,
+                          selectedMenuId === menu._id && styles.menuTabTextActive,
+                        ]}
+                      >
+                        {menu.menuType}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* Food Items for Selected Menu */}
+                {selectedMenuId && (
+                  <View style={styles.foodItemsContainer}>
+                    {foodItems[selectedMenuId]?.length > 0 ? (
+                      foodItems[selectedMenuId].map((food) => (
                         <TouchableOpacity 
                           key={food._id} 
                           style={styles.foodItem}
@@ -541,9 +631,9 @@ export default function RestaurantDetailScreen() {
                           activeOpacity={0.7}
                         >
                           <View style={styles.foodImageContainer}>
-                            {food.image ? (
+                            {food.imageCover ? (
                               <ExpoImage
-                                source={{ uri: food.image }}
+                                source={{ uri: food.imageCover }}
                                 style={styles.foodImage}
                                 contentFit="cover"
                                 transition={200}
@@ -611,12 +701,13 @@ export default function RestaurantDetailScreen() {
                             )}
                           </View>
                         </TouchableOpacity>
-                    ))
-                  ) : (
-                    <Text style={styles.emptyText}>No food items available</Text>
-                  )}
-                </View>
-              ))
+                      ))
+                    ) : (
+                      <Text style={styles.emptyText}>No food items available</Text>
+                    )}
+                  </View>
+                )}
+              </>
             )}
           </View>
 
@@ -629,19 +720,25 @@ export default function RestaurantDetailScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    paddingTop: 28,
     flex: 1,
     backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+
   },
   contentContainer: {
     paddingBottom: 20,
   },
   headerImageContainer: {
     height: 200,
-    position: 'relative',
+    position: 'relative'
+    // backgroundColor: 'rgba(0,0,0,0.3)',
   },
+ 
   headerImage: {
     width: '100%',
     height: '100%',
@@ -697,7 +794,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   infoContainer: {
-    padding: 20,
+    padding: 18,
     backgroundColor: colors.white,
     marginTop: -20,
     borderTopLeftRadius: 24,
@@ -746,7 +843,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   ratingSection: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -766,7 +863,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 4,
   },
   detailCard: {
     flex: 1,
@@ -776,6 +873,9 @@ const styles = StyleSheet.create({
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  detailCardFull: {
+    minWidth: '100%',
   },
   detailIconContainer: {
     width: 32,
@@ -800,8 +900,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '500',
   },
+  detailTextDisabled: {
+    color: colors.lightText,
+  },
   descriptionContainer: {
-    marginTop: 16,
+    marginTop: 8,
   },
   sectionTitle: {
     ...typography.subtitle,
@@ -824,6 +927,38 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
   },
+  menuTabsContainer: {
+    marginBottom: 16,
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+  },
+  menuTabsContent: {
+    gap: 12,
+    paddingRight: 20,
+  },
+  menuTab: {
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: colors.lightGray,
+    borderWidth: 1,
+    borderColor: colors.background,
+  },
+  menuTabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  menuTabText: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  menuTabTextActive: {
+    color: colors.white,
+  },
+  foodItemsContainer: {
+    gap: 12,
+  },
   foodItem: {
     backgroundColor: colors.white,
     borderRadius: 12,
@@ -845,6 +980,8 @@ const styles = StyleSheet.create({
   foodImage: {
     width: '100%',
     height: '100%',
+    borderRadius: 3,
+    resizeMode: 'cover' as const,
   },
   foodImagePlaceholder: {
     width: '100%',

@@ -210,7 +210,7 @@ export default function CheckoutScreen() {
                   if (status !== "granted") {
                     Alert.alert(
                       "Location Permission Required",
-                      "Location permission is required to track your exact location for order delivery."
+                      "Go to your Settings and enable location services to continue with your order."
                     );
                     setIsGettingLocation(false);
                     resolve(null);

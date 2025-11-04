@@ -28,6 +28,10 @@ export interface User {
   active?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 interface AuthState {
