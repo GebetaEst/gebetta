@@ -11,18 +11,19 @@ import {
   Animated,
   StatusBar,
   TextInput,
+  SafeAreaView,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Settings, ChevronDown, ShoppingBag, Search, X } from "lucide-react-native";
+import { Settings, ChevronDown, ShoppingBag, Search, X, Star, ListFilter } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { popularTags } from "@/mocks/recipes";
 import colors from "@/constants/colors";
 import typography from "@/constants/typography";
-import SearchBar from "@/components/SearchBar";
-import RecipeCard from "@/components/RecipeCard";
 import CategoryPill from "@/components/CategoryPill";
-import { useRecipeStore } from "@/store/recipeStore";
+import FoodCard from "@/components/FoodCard";
+import { useFoodStore } from "@/store/foodStore";
 import { useCartStore } from "@/store/cartStore";
-import { popularTags, regions, difficulties } from "@/mocks/recipes";
 
 type SortOption = {
   label: string;
@@ -34,34 +35,36 @@ const sortOptions: SortOption[] = [
   { label: "Highest Rated", value: "rating" },
   { label: "Newest", value: "newest" },
   { label: "Cooking Time", value: "time" },
+  { label: "Price: Low to High", value: "price-low" },
+  { label: "Price: High to Low", value: "price-high" },
 ];
 
 export default function SearchScreen() {
   const router = useRouter();
 
   const {
-    recipes,
-    filteredRecipes,
-    selectedTag,
-    selectedRegion,
+    foods,
+    filteredFoods,
+    selectedCategory,
     searchQuery,
-    setSelectedTag,
-    setSelectedRegion,
+    setSelectedCategory,
     setSearchQuery,
-    sortRecipes,
-    filterByDifficulty,
+    sortFoods,
     filterByTime,
-  } = useRecipeStore();
+    filterByRating,
+    fetchFoods,
+    isLoading,
+    error,
+  } = useFoodStore();
 
   const { getCartItemsCount } = useCartStore();
 
   const [showFilters, setShowFilters] = useState(false);
   const [showSortOptions, setShowSortOptions] = useState(false);
   const [selectedSort, setSelectedSort] = useState<string>("popular");
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(
-    null
-  );
   const [maxTime, setMaxTime] = useState<number | null>(null);
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
   const { width } = Dimensions.get("window");
   const isTablet = width > 768;
 
@@ -72,10 +75,29 @@ export default function SearchScreen() {
   const filterAnim = useRef(new Animated.Value(0)).current;
   const resultsAnim = useRef(new Animated.Value(0)).current;
 
+  // Fetch foods on mount
+  useEffect(() => {
+    fetchFoods();
+  }, []);
+
+  // Extract unique categories from foods
+  useEffect(() => {
+    if (foods.length > 0) {
+      const uniqueCategories = Array.from(
+        new Set(
+          foods
+            .map((food) => food.menuId?.menuType)
+            .filter((type) => type)
+        )
+      );
+      setCategories(["All", ...uniqueCategories]);
+    }
+  }, [foods]);
+
   useEffect(() => {
     // Apply sorting when selected option changes
-    sortRecipes(selectedSort);
-  }, [selectedSort, sortRecipes]);
+    sortFoods(selectedSort);
+  }, [selectedSort, sortFoods]);
 
   // Initialize animations
   useEffect(() => {
@@ -106,7 +128,7 @@ export default function SearchScreen() {
       duration: 400,
       useNativeDriver: true,
     }).start();
-  }, [filteredRecipes]);
+  }, [filteredFoods]);
 
   // Animate filters
   useEffect(() => {
@@ -125,23 +147,19 @@ export default function SearchScreen() {
     setSearchQuery("");
   };
 
-  const handleTagSelect = (tag: string) => {
-    setSelectedTag(selectedTag === tag ? null : tag);
-  };
-
-  const handleRegionSelect = (region: string) => {
-    setSelectedRegion(selectedRegion === region ? null : region);
-  };
-
-  const handleDifficultySelect = (difficulty: string) => {
-    const newDifficulty = selectedDifficulty === difficulty ? null : difficulty;
-    setSelectedDifficulty(newDifficulty);
-    filterByDifficulty(newDifficulty);
+  const handleCategorySelect = (category: string) => {
+    setSelectedCategory(selectedCategory === category ? null : category);
   };
 
   const handleTimeSelect = (time: number | null) => {
     setMaxTime(time);
     filterByTime(time);
+  };
+
+  const handleRatingSelect = (rating: number) => {
+    const newRating = selectedRating === rating ? null : rating;
+    setSelectedRating(newRating);
+    filterByRating(newRating);
   };
 
   const toggleFilters = () => {
@@ -159,13 +177,12 @@ export default function SearchScreen() {
   };
 
   const clearAllFilters = () => {
-    setSelectedTag(null);
-    setSelectedRegion(null);
-    setSelectedDifficulty(null);
+    setSelectedCategory(null);
     setMaxTime(null);
+    setSelectedRating(null);
     setSearchQuery("");
-    filterByDifficulty(null);
     filterByTime(null);
+    filterByRating(null);
   };
 
   const getSelectedSortLabel = () => {
@@ -173,7 +190,7 @@ export default function SearchScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       
       {/* Search Header */}
@@ -191,7 +208,7 @@ export default function SearchScreen() {
             <Search size={20} color={colors.lightText} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search for delicious recipes..."
+              placeholder="Search for delicious food..."
               placeholderTextColor={colors.lightText}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -206,14 +223,14 @@ export default function SearchScreen() {
         <TouchableOpacity
           style={[
             styles.filterButton,
-            (selectedTag || selectedRegion || selectedDifficulty || maxTime) ? styles.activeFilterButton : {},
+            (selectedCategory || maxTime || selectedRating) ? styles.activeFilterButton : {},
           ]}
           onPress={toggleFilters}
         >
-          <Settings
+          <ListFilter
             size={20}
             color={
-              selectedTag || selectedRegion || selectedDifficulty || maxTime
+              selectedCategory || maxTime || selectedRating
                 ? colors.white
                 : colors.text
             }
@@ -241,8 +258,8 @@ export default function SearchScreen() {
           <View style={styles.filterSection}>
             <View style={styles.filterHeader}>
               <Text style={styles.filterTitle}>Categories</Text>
-              {selectedTag && (
-                <TouchableOpacity onPress={() => setSelectedTag(null)}>
+              {selectedCategory && (
+                <TouchableOpacity onPress={() => setSelectedCategory(null)}>
                   <Text style={styles.clearText}>Clear</Text>
                 </TouchableOpacity>
               )}
@@ -252,77 +269,18 @@ export default function SearchScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.tagsContainer}
             >
-              {popularTags.map((tag) => (
+              {popularTags.map((category) => (
                 <CategoryPill
-                  key={tag}
-                  title={tag}
-                  selected={selectedTag === tag}
-                  onPress={() => handleTagSelect(tag)}
+                  key={category}
+                  title={category}
+                  selected={selectedCategory === category}
+                  onPress={() => handleCategorySelect(category)}
                 />
               ))}
             </ScrollView>
           </View>
 
-          <View style={styles.filterSection}>
-            <View style={styles.filterHeader}>
-              <Text style={styles.filterTitle}>Regions</Text>
-              {selectedRegion && (
-                <TouchableOpacity onPress={() => setSelectedRegion(null)}>
-                  <Text style={styles.clearText}>Clear</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.tagsContainer}
-            >
-              {regions.map((region) => (
-                <CategoryPill
-                  key={region}
-                  title={region}
-                  selected={selectedRegion === region}
-                  onPress={() => handleRegionSelect(region)}
-                />
-              ))}
-            </ScrollView>
-          </View>
-
-          <View style={styles.filterSection}>
-            <View style={styles.filterHeader}>
-              <Text style={styles.filterTitle}>Difficulty</Text>
-              {selectedDifficulty && (
-                <TouchableOpacity
-                  onPress={() => handleDifficultySelect(selectedDifficulty)}
-                >
-                  <Text style={styles.clearText}>Clear</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            <View style={styles.difficultyContainer}>
-              {difficulties.map((difficulty) => (
-                <TouchableOpacity
-                  key={difficulty}
-                  style={[
-                    styles.difficultyButton,
-                    selectedDifficulty === difficulty &&
-                      styles.selectedDifficultyButton,
-                  ]}
-                  onPress={() => handleDifficultySelect(difficulty)}
-                >
-                  <Text
-                    style={[
-                      styles.difficultyButtonText,
-                      selectedDifficulty === difficulty &&
-                        styles.selectedDifficultyButtonText,
-                    ]}
-                  >
-                    {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+          
 
           <View style={styles.filterSection}>
             <View style={styles.filterHeader}>
@@ -357,43 +315,63 @@ export default function SearchScreen() {
           </View>
 
           <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Sort By</Text>
-            <View style={styles.sortOptionsContainer}>
-              {sortOptions.map((option) => (
+            <View style={styles.filterHeader}>
+              <Text style={styles.filterTitle}>Minimum Rating</Text>
+              {selectedRating && (
+                <TouchableOpacity onPress={() => setSelectedRating(null)}>
+                  <Text style={styles.clearText}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={styles.ratingContainer}>
+              {[1, 2, 3, 4, 5].map((rating) => (
                 <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.sortOption,
-                    selectedSort === option.value && styles.selectedSortOption,
-                  ]}
-                  onPress={() => {
-                    setSelectedSort(option.value);
-                    sortRecipes(option.value);
-                  }}
+                  key={rating}
+                  style={styles.starButton}
+                  onPress={() => handleRatingSelect(rating)}
                 >
-                  <Text
-                    style={[
-                      styles.sortOptionText,
-                      selectedSort === option.value && styles.selectedSortOptionText,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
+                  <Star
+                    size={32}
+                    color={selectedRating && rating <= selectedRating ? colors.primary : colors.lightText}
+                    fill={selectedRating && rating <= selectedRating ? colors.primary : "transparent"}
+                  />
                 </TouchableOpacity>
               ))}
             </View>
+            {selectedRating && (
+              <Text style={styles.ratingText}>
+                {selectedRating} star{selectedRating > 1 ? 's' : ''} & above
+              </Text>
+            )}
           </View>
 
           <TouchableOpacity
             style={styles.clearAllButton}
             onPress={clearAllFilters}
           >
-            <Text style={styles.clearAllText}>🗑️ Clear All Filters</Text>
+            <Text style={styles.clearAllText}> Clear All Filters</Text>
           </TouchableOpacity>
         </Animated.View>
       )}
 
-      {filteredRecipes.length > 0 ? (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading delicious food...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={fetchFoods}
+          >
+            <Text style={styles.retryButtonText}>🔄 Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : filteredFoods.length > 0 ? (
         <Animated.View
           style={[
             styles.resultsContainer,
@@ -410,11 +388,13 @@ export default function SearchScreen() {
             },
           ]}
         >
-
+          <Text style={styles.resultsCount}>
+            {filteredFoods.length} {filteredFoods.length === 1 ? 'item' : 'items'} found
+          </Text>
           <FlatList
-            data={filteredRecipes}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <RecipeCard recipe={item} />}
+            data={filteredFoods}
+            keyExtractor={(item) => item.id || item._id}
+            renderItem={({ item }) => <FoodCard food={item} />}
             contentContainerStyle={styles.recipesList}
             showsVerticalScrollIndicator={false}
             numColumns={1}
@@ -431,7 +411,7 @@ export default function SearchScreen() {
           ]}
         >
           <Text style={styles.emptyIcon}>🔍</Text>
-          <Text style={styles.emptyTitle}>No recipes found</Text>
+          <Text style={styles.emptyTitle}>No food items found</Text>
           <Text style={styles.emptyText}>
             Try adjusting your search or filters to find what you're looking for
           </Text>
@@ -439,7 +419,7 @@ export default function SearchScreen() {
             style={styles.retryButton}
             onPress={clearAllFilters}
           >
-            <Text style={styles.retryButtonText}>🔄 Clear Filters & Try Again</Text>
+            <Text style={styles.retryButtonText}> Clear Filters & Try Again</Text>
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -473,7 +453,7 @@ export default function SearchScreen() {
           </TouchableOpacity>
         </Animated.View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -516,6 +496,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flex: 1,
     marginRight: 12,
+    marginTop: 10,
   },
   searchBarCustom: {
     flexDirection: "row",
@@ -524,7 +505,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    height: 40,
+    height: 48,
+    marginTop: 5,
   },
   searchIcon: {
     marginRight: 8,
@@ -556,6 +538,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    marginTop: 13,
+
   },
   activeFilterButton: {
     backgroundColor: colors.primary,
@@ -610,6 +594,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
+    width: '100%',
   },
   resultsContainer: {
     flex: 1,
@@ -690,6 +675,22 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: "600",
   },
+  ratingContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  starButton: {
+    paddingHorizontal: 4,
+  },
+  ratingText: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    textAlign: "center",
+    marginTop: 8,
+    fontWeight: "600",
+  },
   clearAllButton: {
     alignItems: "center",
     paddingVertical: 12,
@@ -703,6 +704,39 @@ const styles = StyleSheet.create({
   },
   recipesList: {
     paddingBottom: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.lightText,
+    marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  errorIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    ...typography.heading3,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.lightText,
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 24,
   },
   emptyContainer: {
     flex: 1,

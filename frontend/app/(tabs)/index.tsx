@@ -433,7 +433,7 @@ export default function HomeScreen() {
           {/* Featured Recipe */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, styles.sectionTitleInHeader]}>Trending Right Now</Text>
+              <Text style={[styles.sectionTitle, styles.sectionTitleInHeader]}>Trending</Text>
               <View style={styles.rotationIndicator}>
                 <TouchableOpacity
                   onPress={() => setFeaturedRecipes(getRandomRecipes(1))}
@@ -539,7 +539,7 @@ export default function HomeScreen() {
                       <View style={styles.locationContainer}>
                         <MapPin size={14} color={colors.lightText} />
                         <Text style={styles.locationText} numberOfLines={1}>
-                          ${food.price}
+                          {food.price} birr
                         </Text>
                       </View>
                     </View>

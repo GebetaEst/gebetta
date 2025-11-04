@@ -46,6 +46,10 @@ export const ENDPOINTS = {
   RECIPE: (id: string) => `/recipes/${id}`,
   RECIPE_COMMENTS: (recipeId: string) => `/recipes/${recipeId}/comments`,
   
+  // Foods
+  FOODS: "/foods",
+  FOOD: (id: string) => `/foods/${id}`,
+  
   // Analytics
   RESTAURANT_ANALYTICS: (restaurantId: string) => 
     `/analytics/restaurant/${restaurantId}`,

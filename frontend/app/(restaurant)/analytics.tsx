@@ -170,7 +170,7 @@ export default function AnalyticsScreen() {
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statTitle}>Total Revenue</Text>
-          <Text style={styles.statValue}>${analyticsData?.totalRevenue}</Text>
+          <Text style={styles.statValue}>ETB{analyticsData?.totalRevenue}</Text>
         </View>
       </View>
 

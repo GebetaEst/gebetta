@@ -168,7 +168,7 @@ export default function HelpCenterScreen() {
   };
 
   const handleAddressContact = () => {
-    const address = 'Bole Road, Addis Ababa, Ethiopia';
+    const addess = 'Bole Road, Addis Ababa, Ethiopia';
     const mapsUrl = `https://maps.google.com/maps?q=${encodeURIComponent(address)}`;
     
     Linking.canOpenURL(mapsUrl)

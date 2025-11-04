@@ -43,21 +43,21 @@ export default function TabsLayout() {
           name="index"
           options={{
             title: "Home",
-            tabBarIcon: ({ color }) => <Home size={24} color={color} />,
+            tabBarIcon: ({ color, focused }) => <Home size={focused ? 28 : 24} color={color} />,
           }}
         />
         <Tabs.Screen
           name="search"
           options={{
             title: "Search",
-            tabBarIcon: ({ color }) => <Search size={24} color={color} />,
+            tabBarIcon: ({ color, focused }) => <Search size={focused ? 28 : 24} color={color} />,
           }}
         />
         <Tabs.Screen
           name="restaurants"
           options={{
             title: "Restaurants",
-            tabBarIcon: ({ color }) => <UtensilsCrossed size={24} color={color} />,
+            tabBarIcon: ({ color, focused }) => <UtensilsCrossed size={focused ? 28 : 24} color={color} />,
           }}
         />
 
@@ -65,7 +65,7 @@ export default function TabsLayout() {
           name="profile"
           options={{
             title: "Profile",
-            tabBarIcon: ({ color }) => <UserCircle size={24} color={color} />,
+            tabBarIcon: ({ color, focused }) => <UserCircle size={focused ? 28 : 24} color={color} />,
           }}
         />
       </Tabs>
