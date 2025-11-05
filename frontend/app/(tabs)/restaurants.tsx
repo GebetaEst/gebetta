@@ -4,109 +4,11 @@ import colors from "@/constants/colors";
 import typography from "@/constants/typography";
 
 import { useCartStore } from "@/store/cartStore";
-import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { ChevronDown, MapPin, Search, X, ShoppingBag, Settings } from "lucide-react-native";
+import { Search, X, ShoppingBag, Settings, Star } from "lucide-react-native";
 import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
-import { Modal, Switch, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-// Custom slider implementation
-import { PanResponder } from 'react-native';
-
-interface SliderProps {
-  value: number;
-  minimumValue: number;
-  maximumValue: number;
-  step: number;
-  onValueChange: (value: number) => void;
-  minimumTrackTintColor?: string;
-  maximumTrackTintColor?: string;
-  thumbTintColor?: string;
-  style?: any;
-  disabled?: boolean;
-  accessibilityLabel?: string;
-}
-
-const CustomSlider: React.FC<SliderProps> = ({
-  value,
-  minimumValue = 0,
-  maximumValue = 1,
-  step = 0.1,
-  onValueChange,
-  minimumTrackTintColor = '#0000FF',
-  maximumTrackTintColor = '#00000022',
-  thumbTintColor = '#0000FF',
-  style,
-  disabled = false,
-  accessibilityLabel,
-}) => {
-  const sliderWidth = 200; // Default width
-  const thumbSize = 20;
-  
-  const getSliderPosition = (v: number) => {
-    const range = maximumValue - minimumValue;
-    const position = ((v - minimumValue) / range) * sliderWidth;
-    return Math.max(0, Math.min(position, sliderWidth));
-  };
-  
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => !disabled,
-    onMoveShouldSetPanResponder: () => !disabled,
-    onPanResponderMove: (_, gestureState) => {
-      if (disabled) return;
-      
-      const { dx } = gestureState;
-      const range = maximumValue - minimumValue;
-      const steps = range / step;
-      const stepInPixels = sliderWidth / steps;
-      const newValue = value + (dx / stepInPixels) * step;
-      
-      const clampedValue = Math.max(minimumValue, Math.min(maximumValue, newValue));
-      const steppedValue = Math.round(clampedValue / step) * step;
-      
-      onValueChange(steppedValue);
-    },
-  });
-  
-  const trackPosition = getSliderPosition(value);
-  
-  return (
-    <View style={[styles.sliderContainer, style]}>
-      <View style={[styles.track, { backgroundColor: maximumTrackTintColor }]}>
-        <View 
-          style={[
-            styles.trackActive, 
-            { 
-              width: trackPosition,
-              backgroundColor: minimumTrackTintColor,
-            },
-          ]} 
-        />
-      </View>
-      <View 
-        style={[
-          styles.thumb,
-          { 
-            left: trackPosition - thumbSize / 2,
-            backgroundColor: thumbTintColor,
-            opacity: disabled ? 0.5 : 1,
-          },
-        ]}
-        {...panResponder.panHandlers}
-        accessible={true}
-        accessibilityRole="adjustable"
-        accessibilityLabel={accessibilityLabel}
-        accessibilityValue={{
-          min: minimumValue,
-          max: maximumValue,
-          now: value,
-        }}
-      />
-    </View>
-  );
-};
-
-const Slider = CustomSlider;
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Animated, Switch, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import axios from "axios";
 
 // Define the OpeningHours type to be more flexible
@@ -164,21 +66,21 @@ interface ApiRestaurant {
 function toAppRestaurant(apiRestaurant: ApiRestaurant): AppRestaurant {
   const location = apiRestaurant.location;
   const coordinates = location?.coordinates || [0, 0];
-  
+
   return {
     id: apiRestaurant._id,
     _id: apiRestaurant._id,
     name: apiRestaurant.name,
     slug: apiRestaurant.slug || apiRestaurant.name.toLowerCase().replace(/\s+/g, '-'),
-    ownerId: typeof apiRestaurant.managerId === 'object' 
-      ? (apiRestaurant.managerId?._id || '') 
+    ownerId: typeof apiRestaurant.managerId === 'object'
+      ? (apiRestaurant.managerId?._id || '')
       : (apiRestaurant.managerId || ''),
     imageUrl: apiRestaurant.imageCover || '',
     imageCover: apiRestaurant.imageCover || '',
     address: location?.address || 'Address not available',
     cuisine: apiRestaurant.cuisineTypes?.[0] || 'Other',
     cuisineTypes: apiRestaurant.cuisineTypes || [],
-    priceLevel: '$$', // Default price level
+    priceLevel: '', // Default price level
     rating: apiRestaurant.ratingAverage || 0,
     ratingAverage: apiRestaurant.ratingAverage || 0,
     ratingQuantity: apiRestaurant.ratingQuantity || 0,
@@ -189,19 +91,19 @@ function toAppRestaurant(apiRestaurant: ApiRestaurant): AppRestaurant {
     description: apiRestaurant.description || '',
     deliveryRadiusMeters: apiRestaurant.deliveryRadiusMeters || 5000,
     license: apiRestaurant.license || 'N/A',
-    managerId: typeof apiRestaurant.managerId === 'object' 
-      ? (apiRestaurant.managerId?._id || '') 
+    managerId: typeof apiRestaurant.managerId === 'object'
+      ? (apiRestaurant.managerId?._id || '')
       : (apiRestaurant.managerId || ''),
     openHours: apiRestaurant.openHours || '9:00 AM - 10:00 PM',
     reviews: apiRestaurant.reviews || [],
     reviewCount: apiRestaurant.reviewCount || 0,
-    shortDescription: apiRestaurant.shortDescription || 
-      (apiRestaurant.description ? 
-        apiRestaurant.description.substring(0, 100) + 
-        (apiRestaurant.description.length > 100 ? '...' : '') 
+    shortDescription: apiRestaurant.shortDescription ||
+      (apiRestaurant.description ?
+        apiRestaurant.description.substring(0, 100) +
+        (apiRestaurant.description.length > 100 ? '...' : '')
         : ''),
-    deliveryFee: 0,
-    estimatedDeliveryTime: '30-45 min',
+    deliveryFee: apiRestaurant.isDeliveryAvailable ? 50 : 0,
+    estimatedDeliveryTime: apiRestaurant.deliveryRadiusMeters ? "" : '',
     createdAt: apiRestaurant.createdAt || new Date().toISOString(),
     updatedAt: apiRestaurant.updatedAt || new Date().toISOString(),
     location: {
@@ -210,19 +112,6 @@ function toAppRestaurant(apiRestaurant: ApiRestaurant): AppRestaurant {
     }
   };
 }
-
-// Alias for backward compatibility
-type Restaurant = AppRestaurant;
-
-type PriceRange = 'Under 100 ETB' | '100-300 ETB' | '300-500 ETB' | '500+ ETB';
-
-const priceRanges = [
-  { label: 'Under 100 ETB', value: 'Under 100 ETB' as const },
-  { label: '100-300 ETB', value: '100-300 ETB' as const },
-  { label: '300-500 ETB', value: '300-500 ETB' as const },
-  { label: '500+ ETB', value: '500+ ETB' as const },
-];
-
 const restaurantCategories = [
   'All',
   'Ethiopian',
@@ -234,6 +123,9 @@ const restaurantCategories = [
   'Other'
 ];
 
+// Alias for backward compatibility
+type Restaurant = AppRestaurant;
+
 export default function RestaurantsScreen() {
   const router = useRouter();
   const { getCartItemsCount } = useCartStore();
@@ -242,51 +134,23 @@ export default function RestaurantsScreen() {
   const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [address, setAddress] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
-  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
-  type Cuisine = {
-    id: string;
-    name: string;
-    selected: boolean;
-  };
-
-  const initialCuisines: Cuisine[] = [
-    { id: 'ethiopian', name: 'Ethiopian', selected: false },
-    { id: 'italian', name: 'Italian', selected: false },
-    { id: 'chinese', name: 'Chinese', selected: false },
-    { id: 'indian', name: 'Indian', selected: false },
-    { id: 'fast-food', name: 'Fast Food', selected: false },
-    { id: 'vegan', name: 'Vegan', selected: false },
-    { id: 'other', name: 'Other', selected: false },
-  ];
+  // Animation ref for filter panel
+  const filterAnim = useRef(new Animated.Value(0)).current;
 
   type Filters = {
-    priceRange: [number, number];
-    cuisines: Cuisine[];
-    dietaryOptions: string[];
     minRating: number;
     openNow: boolean;
-    deliveryTime: number;
   };
 
   const [filters, setFilters] = useState<Filters>({
-    priceRange: [0, 1000],
-    cuisines: [...initialCuisines],
-    dietaryOptions: [],
     minRating: 0,
     openNow: false,
-    deliveryTime: 60,
   });
 
-  // Explicitly type the slider value change handler
-  const handleSliderValueChange = (value: number) => {
-    setFilters(prev => ({ ...prev, deliveryTime: value }));
-  };
 
   // Fetch restaurants from API
   const fetchRestaurants = async () => {
@@ -296,15 +160,15 @@ export default function RestaurantsScreen() {
       console.log('Fetching restaurants...');
       const response = await axios.get('https://gebeta-delivery1.onrender.com/api/v1/restaurants');
       console.log('API Response:', response);
-      
+
       // Handle different possible response structures
       let restaurantsData = [];
-      
+
       // Case 1: Data is nested under response.data.data.restaurants (from logs)
       if (response?.data?.data?.restaurants && Array.isArray(response.data.data.restaurants)) {
         console.log('Found restaurants in response.data.data.restaurants');
         restaurantsData = response.data.data.restaurants;
-      } 
+      }
       // Case 2: Data is directly in response.data (array)
       else if (Array.isArray(response?.data)) {
         console.log('Found restaurants directly in response.data');
@@ -314,17 +178,17 @@ export default function RestaurantsScreen() {
       else if (Array.isArray(response?.data?.data)) {
         console.log('Found restaurants in response.data.data');
         restaurantsData = response.data.data;
-      } 
+      }
       // Case 4: No valid data found
       else {
         console.warn('Unexpected API response structure:', response?.data);
         throw new Error('Unexpected data format received from server');
       }
-      
+
       console.log('Setting restaurants data:', restaurantsData);
       setRestaurants(restaurantsData);
       setFilteredRestaurants(restaurantsData);
-      
+
     } catch (err: unknown) {
       console.error('Error fetching restaurants:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load restaurants. Please try again.';
@@ -340,178 +204,26 @@ export default function RestaurantsScreen() {
     fetchRestaurants();
   }, []);
 
-  // Get location permission and current location
-  const getLocation = async () => {
-    try {
-      if (Platform.OS === 'web') {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              setLocation({
-                coords: {
-                  latitude: position.coords.latitude,
-                  longitude: position.coords.longitude,
-                  altitude: null,
-                  accuracy: null,
-                  altitudeAccuracy: null,
-                  heading: null,
-                  speed: null,
-                },
-                timestamp: Date.now(),
-              });
-              reverseGeocodeWithRetry(position.coords.latitude, position.coords.longitude)
-                .then((geocode) => {
-                  if (geocode && geocode.length > 0) {
-                    const { city, region } = geocode[0];
-                    setAddress(`${city || ''}, ${region || ''}`.trim() || 'Location found');
-                  } else {
-                    setAddress('Location not available');
-                  }
-                })
-                .catch(() => setAddress('Please enter your location'));
-            },
-            () => setAddress('Please enter your location'),
-            { timeout: 10000 }
-          );
-        } else {
-          setAddress('Please enter your location');
-        }
-        setLocationPermission(true);
-        setIsLoading(false);
-        return;
-      }
-
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      setLocationPermission(status === 'granted');
-
-      if (status === 'granted') {
-        const location = await Promise.race([
-          Location.getCurrentPositionAsync({}),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Location request timeout')), 10000)
-          )
-        ]);
-
-        setLocation(location);
-
-        try {
-          const geocode = await reverseGeocodeWithRetry(
-            location.coords.latitude,
-            location.coords.longitude
-          );
-
-          if (geocode && geocode.length > 0) {
-            const { city, region } = geocode[0];
-            setAddress(`${city || ''}, ${region || ''}`.trim() || 'Location found');
-          } else {
-            setAddress('Location found (address not available)');
-          }
-        } catch (geocodeError) {
-          console.warn('Reverse geocoding failed:', geocodeError);
-          setAddress(`Location: ${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}`);
-        }
-      } else {
-        setAddress('Location permission denied');
-      }
-    } catch (error) {
-      console.error('Error getting location:', error);
-      setAddress('Error getting location. Using default location.');
-      setLocation({
-        coords: {
-          latitude: 9.0054,
-          longitude: 38.7636,
-          altitude: null,
-          accuracy: null,
-          altitudeAccuracy: null,
-          heading: null,
-          speed: null,
-        },
-        timestamp: Date.now(),
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const reverseGeocodeWithRetry = async (latitude: number, longitude: number, retries = 3, delay = 1000) => {
-    for (let i = 0; i < retries; i++) {
-      try {
-        const geocode = await Promise.race([
-          Location.reverseGeocodeAsync({ latitude, longitude }),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Reverse geocoding timeout')), 10000)
-          )
-        ]);
-        return geocode;
-      } catch (error) {
-        if (i === retries - 1) throw error;
-        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
-      }
-    }
-    throw new Error('Max retries reached for reverse geocoding');
-  };
-
+  // Animate filters when toggled
   useEffect(() => {
-    getLocation();
-  }, []);
-
-  const togglePriceRange = (priceRange: string) => {
-    let min = 0;
-    let max = 1000;
-
-    switch (priceRange) {
-      case 'Under 100 ETB':
-        max = 99;
-        break;
-      case '100-300 ETB':
-        min = 100;
-        max = 300;
-        break;
-      case '300-500 ETB':
-        min = 301;
-        max = 500;
-        break;
-      case '500+ ETB':
-        min = 501;
-        max = 1000;
-        break;
+    if (showFilters) {
+      Animated.timing(filterAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      filterAnim.setValue(0);
     }
+  }, [showFilters]);
 
-    setFilters(prev => ({
-      ...prev,
-      priceRange: [min, max],
-    }));
-  };
-
-  const toggleCuisine = (cuisineId: string) => {
-    setFilters(prev => ({
-      ...prev,
-      cuisines: prev.cuisines.map(cuisine => 
-        cuisine.id === cuisineId 
-          ? { ...cuisine, selected: !cuisine.selected } 
-          : cuisine
-      ),
-    }));
-  };
-
-  const toggleDietaryOption = (option: string) => {
-    setFilters(prev => ({
-      ...prev,
-      dietaryOptions: prev.dietaryOptions.includes(option)
-        ? prev.dietaryOptions.filter(item => item !== option)
-        : [...prev.dietaryOptions, option],
-    }));
-  };
 
   const handleCategoryPress = (category: string) => {
     setSelectedCategory(category);
   };
 
-  const handleRestaurantPress = (restaurantId: string) => {
-    router.push({
-      pathname: '/restaurant/[id]',
-      params: { id: restaurantId },
-    });
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
   };
 
   const filterRestaurants = useCallback(() => {
@@ -534,23 +246,6 @@ export default function RestaurantsScreen() {
       );
     }
 
-    // Apply price range filter (assuming price range is estimated from rating)
-    const [minPrice, maxPrice] = filters.priceRange;
-    filtered = filtered.filter(restaurant => {
-      // Estimate price based on rating (simplified logic, adjust as needed)
-      const estimatedPrice = restaurant.ratingAverage * 100; // Example: 4.5 rating -> ~450 ETB
-      return estimatedPrice >= minPrice && estimatedPrice <= maxPrice;
-    });
-
-    // Apply cuisine filter
-    const selectedCuisines = filters.cuisines
-      .filter(cuisine => cuisine.selected)
-      .map(cuisine => cuisine.name);
-    if (selectedCuisines.length > 0) {
-      filtered = filtered.filter(restaurant =>
-        restaurant.cuisineTypes.some(cuisine => selectedCuisines.includes(cuisine))
-      );
-    }
 
     // Apply open now filter
     if (filters.openNow) {
@@ -562,21 +257,6 @@ export default function RestaurantsScreen() {
       filtered = filtered.filter(restaurant => restaurant.ratingAverage >= filters.minRating);
     }
 
-    // Apply dietary options filter
-    if (filters.dietaryOptions.length > 0) {
-      filtered = filtered.filter(restaurant =>
-        filters.dietaryOptions.every(option => restaurant.cuisineTypes.includes(option))
-      );
-    }
-
-    // Apply delivery time filter (assuming deliveryRadiusMeters correlates with delivery time)
-    if (filters.deliveryTime) {
-      filtered = filtered.filter(restaurant => {
-        const estimatedDeliveryTime = Math.round(restaurant.deliveryRadiusMeters / 100); // Simplified: 100m = 1 min
-        return estimatedDeliveryTime <= filters.deliveryTime;
-      });
-    }
-
     setFilteredRestaurants(filtered);
   }, [searchQuery, selectedCategory, filters, restaurants]);
 
@@ -584,50 +264,29 @@ export default function RestaurantsScreen() {
     filterRestaurants();
   }, [filterRestaurants]);
 
-  const applyFilters = () => {
-    setShowFilterModal(false);
+  const handleClearSearch = () => {
+    setSearchQuery("");
   };
 
-  const isPriceRangeSelected = (range: string): boolean => {
-    const [min, max] = filters.priceRange;
-    switch (range) {
-      case 'Under 100 ETB':
-        return min === 0 && max === 99;
-      case '100-300 ETB':
-        return min === 100 && max === 300;
-      case '300-500 ETB':
-        return min === 301 && max === 500;
-      case '500+ ETB':
-        return min === 501 && max === 1000;
-      default:
-        return false;
-    }
-  };
-
-  const resetFilters = () => {
-    setFilters({
-      priceRange: [0, 1000],
-      cuisines: initialCuisines,
-      dietaryOptions: [],
-      deliveryTime: 60,
+  const clearAllFilters = () => {
+    setSelectedCategory('All');
+    setFilters(prev => ({
+      ...prev,
       openNow: false,
       minRating: 0,
-    });
+    }));
+    setSearchQuery("");
+  };
+
+  const handleRatingSelect = (rating: number) => {
+    setFilters(prev => ({
+      ...prev,
+      minRating: prev.minRating === rating ? 0 : rating,
+    }));
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.locationContainer}>
-          <MapPin size={20} color={colors.primary} style={styles.locationIcon} />
-          <Text style={styles.locationText} numberOfLines={1}>
-            {address}
-          </Text>
-          <ChevronDown size={16} color={colors.text} />
-        </View>
-
-      </View>
-
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Search size={20} color={colors.lightText} style={styles.searchIcon} />
@@ -639,31 +298,137 @@ export default function RestaurantsScreen() {
             onChangeText={setSearchQuery}
             accessibilityLabel="Search restaurants"
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
+              <X size={18} color={colors.lightText} />
+            </TouchableOpacity>
+          )}
         </View>
         <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowFilterModal(true)}
+          style={[
+            styles.filterButton,
+            (selectedCategory !== 'All' || filters.openNow || filters.minRating > 0)
+              ? styles.activeFilterButton
+              : {}
+          ]}
+          onPress={toggleFilters}
           accessibilityLabel="Open filter options"
         >
-          <Settings size={20} color={colors.text} />
+          <Settings
+            size={20}
+            color={
+              (selectedCategory !== 'All' || filters.openNow || filters.minRating > 0)
+                ? colors.white
+                : colors.text
+            }
+          />
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoriesContainer}
-        contentContainerStyle={styles.categoriesContent}
-      >
-        {restaurantCategories.map(category => (
-          <CategoryPill
-            key={category}
-            title={category}
-            selected={selectedCategory === category}
-            onPress={() => handleCategoryPress(category)}
-          />
-        ))}
-      </ScrollView>
+      
+
+      {showFilters && (
+        <Animated.View
+          style={[
+            styles.filtersContainer,
+            {
+              opacity: filterAnim,
+              transform: [
+                {
+                  translateY: filterAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-20, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.filterSection}>
+            <View style={styles.filterHeader}>
+              <Text style={styles.filterTitle}>Cuisine Type</Text>
+              {selectedCategory !== 'All' && (
+                <TouchableOpacity onPress={() => setSelectedCategory('All')}>
+                  <Text style={styles.clearText}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tagsContainer}
+            >
+              {restaurantCategories.map(category => (
+                <CategoryPill
+                  key={category}
+                  title={category}
+                  selected={selectedCategory === category}
+                  onPress={() => handleCategoryPress(category)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.filterSection}>
+            <View style={styles.filterHeader}>
+              <Text style={styles.filterTitle}>Minimum Rating</Text>
+              {filters.minRating > 0 && (
+                <TouchableOpacity onPress={() => setFilters(prev => ({ ...prev, minRating: 0 }))}>
+                  <Text style={styles.clearText}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={styles.ratingContainer}>
+              {[1, 2, 3, 4, 5].map((rating) => (
+                <TouchableOpacity
+                  key={rating}
+                  style={styles.starButton}
+                  onPress={() => handleRatingSelect(rating)}
+                >
+                  <Star
+                    size={32}
+                    color={filters.minRating >= rating ? colors.primary : colors.lightText}
+                    fill={filters.minRating >= rating ? colors.primary : "transparent"}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+            {filters.minRating > 0 && (
+              <Text style={styles.ratingText}>
+                {filters.minRating} star{filters.minRating > 1 ? 's' : ''} & above
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.filterSection}>
+            <View style={styles.filterRow}>
+              <Text style={styles.filterTitle}>Open Now</Text>
+              <Switch
+                value={filters.openNow}
+                onValueChange={value =>
+                  setFilters(prev => ({ ...prev, openNow: value }))
+                }
+                trackColor={{ false: colors.lightGray, true: colors.primary }}
+                thumbColor="#fff"
+                accessibilityLabel="Toggle open now filter"
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.clearAllButton}
+            onPress={clearAllFilters}
+          >
+            <Text style={styles.clearAllText}>Clear All Filters</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+      {/* Show restaurant count */}
+      <View style={styles.restaurantCountContainer}>
+        <Text style={styles.restaurantCountText}>
+          {filteredRestaurants.length} restaurant{filteredRestaurants.length !== 1 ? 's' : ''}
+        </Text>
+      </View>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -691,291 +456,46 @@ export default function RestaurantsScreen() {
           showsVerticalScrollIndicator={false}
         >
           {filteredRestaurants.map((restaurant: any) => {
-            // Calculate delivery time based on distance (1 min per 100m)
-            const deliveryTime = Math.ceil(restaurant.deliveryRadiusMeters / 100);
-            const estimatedDeliveryTime = `${deliveryTime}-${deliveryTime + 15} min`;
-            
-            // Format price level based on rating average
             const restaurantData = toAppRestaurant(restaurant);
-            
+
             return (
               <RestaurantCard
-                key={restaurant._id}
+                key={restaurant.id}
                 restaurant={restaurantData}
-                onPress={() => router.push(`/restaurant/${restaurant._id}`)}
+                onPress={() => router.push(`/restaurant/${restaurant.id}`)}
               />
             );
           })}
         </ScrollView>
       )}
 
-      <Modal
-        visible={showFilterModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowFilterModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filter Restaurants</Text>
-              <TouchableOpacity
-                onPress={() => setShowFilterModal(false)}
-                accessibilityLabel="Close filter modal"
-              >
-                <X size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.filterOptions}>
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Price Range (ETB)</Text>
-                <View style={styles.priceRangeContainer}>
-                  {priceRanges.map(price => {
-                    const isSelected = isPriceRangeSelected(price.value);
-                    return (
-                      <TouchableOpacity
-                        key={price.value}
-                        style={[
-                          styles.priceButton,
-                          isSelected && styles.priceButtonSelected,
-                        ]}
-                        onPress={() => togglePriceRange(price.value)}
-                        accessibilityLabel={`Select price range ${price.label}`}
-                      >
-                        <Text
-                          style={[
-                            styles.priceButtonText,
-                            isSelected && styles.priceButtonTextSelected,
-                          ]}
-                        >
-                          {price.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Cuisine Type</Text>
-                <View style={styles.tagsContainer}>
-                  {filters.cuisines.map(cuisine => (
-                    <TouchableOpacity
-                      key={cuisine.id}
-                      style={[
-                        styles.tagButton,
-                        cuisine.selected && styles.tagButtonSelected,
-                      ]}
-                      onPress={() => toggleCuisine(cuisine.id)}
-                      accessibilityLabel={`Select ${cuisine.name} cuisine`}
-                    >
-                      <Text
-                        style={[
-                          styles.tagButtonText,
-                          cuisine.selected ? styles.tagButtonTextSelected : null,
-                        ]}
-                      >
-                        {cuisine.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Dietary Options</Text>
-                <View style={styles.tagsContainer}>
-                  {filters.dietaryOptions.length > 0 && (
-                    <Text style={styles.filterBadge}>
-                      {filters.dietaryOptions.length}
-                    </Text>
-                  )}
-                  {['Vegan'].map(option => (
-                    <TouchableOpacity
-                      key={option}
-                      style={[
-                        styles.tagButton,
-                        filters.dietaryOptions.includes(option) && styles.tagButtonSelected,
-                      ]}
-                      onPress={() => toggleDietaryOption(option)}
-                      accessibilityLabel={`Select ${option} dietary option`}
-                    >
-                      <Text
-                        style={[
-                          styles.tagButtonText,
-                          filters.dietaryOptions.includes(option) && styles.tagButtonTextSelected,
-                        ]}
-                      >
-                        {option}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>
-                  Max Delivery Time: {filters.deliveryTime} min
-                </Text>
-                <Slider
-                  style={styles.sliderTrack}
-                  minimumValue={15}
-                  maximumValue={120}
-                  step={1}
-                  value={filters.deliveryTime}
-                  onValueChange={handleSliderValueChange}
-                  minimumTrackTintColor={colors.primary}
-                  maximumTrackTintColor={colors.lightGray}
-                  thumbTintColor={Platform.OS === 'android' ? colors.primary : undefined}
-                  accessibilityLabel="Adjust maximum delivery time"
-                />
-                <View style={styles.sliderLabels}>
-                  <Text style={styles.sliderLabel}>15 min</Text>
-                  <Text style={styles.sliderLabel}>60 min</Text>
-                  <Text style={styles.sliderLabel}>120 min</Text>
-                </View>
-              </View>
-
-              <View style={styles.filterSection}>
-                <View style={styles.filterRow}>
-                  <Text style={styles.filterSectionTitle}>Open Now</Text>
-                  <Switch
-                    value={filters.openNow}
-                    onValueChange={value =>
-                      setFilters(prev => ({ ...prev, openNow: value }))
-                    }
-                    trackColor={{ false: colors.lightGray, true: colors.primary }}
-                    thumbColor="#fff"
-                    accessibilityLabel="Toggle open now filter"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Minimum Rating</Text>
-                <View style={styles.ratingContainer}>
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <TouchableOpacity
-                      key={star}
-                      onPress={() =>
-                        setFilters(prev => ({
-                          ...prev,
-                          minRating: prev.minRating === star ? 0 : star,
-                        }))
-                      }
-                      accessibilityLabel={`Set minimum rating to ${star} stars`}
-                    >
-                      <Text
-                        style={[
-                          styles.ratingStar,
-                          star <= filters.minRating && styles.ratingStarSelected,
-                        ]}
-                      >
-                        {star <= filters.minRating ? '★' : '☆'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                  <Text style={styles.ratingText}>
-                    {filters.minRating > 0 ? `${filters.minRating}+` : 'Any'}
-                  </Text>
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={[styles.filterButton, styles.resetButton]}
-                onPress={resetFilters}
-                accessibilityLabel="Reset all filters"
-              >
-                <Text style={styles.resetButtonText}>Reset</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.filterButton, styles.applyButton]}
-                onPress={applyFilters}
-                accessibilityLabel="Apply filters"
-              >
-                <Text style={styles.applyButtonText}>Apply Filters</Text>
-              </TouchableOpacity>
-            </View>
+      {/* Floating Cart Button - Only visible when there are items in cart */}
+      {getCartItemsCount() > 0 && (
+        <TouchableOpacity
+          style={styles.floatingCartButton}
+          onPress={() => router.push("/cart")}
+        >
+          <ShoppingBag size={24} color={colors.white} />
+          <View style={styles.cartBadge}>
+            <Text style={styles.cartBadgeText}>{getCartItemsCount()}</Text>
           </View>
-        </View>
-      </Modal>
-       
-       {/* Floating Cart Button - Only visible when there are items in cart */}
-       {getCartItemsCount() > 0 && (
-         <TouchableOpacity
-           style={styles.floatingCartButton}
-           onPress={() => router.push("/cart")}
-         >
-           <ShoppingBag size={24} color={colors.white} />
-           <View style={styles.cartBadge}>
-             <Text style={styles.cartBadgeText}>{getCartItemsCount()}</Text>
-           </View>
-         </TouchableOpacity>
-       )}
-     </SafeAreaView>
-   );
+        </TouchableOpacity>
+      )}
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-  sliderContainer: {
-    height: 40,
-    justifyContent: 'center',
-    width: '100%',
-  },
-  track: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#00000022',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  trackActive: {
-    position: 'absolute',
-    height: '100%',
-    backgroundColor: '#0000FF',
-  },
-  thumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#0000FF',
-    position: 'absolute',
-    top: '50%',
-    marginTop: -10,
-    zIndex: 1,
-  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationIcon: {
-    marginRight: 8,
-  },
-  locationText: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '500',
-    flex: 1,
-    marginRight: 4,
+    paddingTop: 30,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 12,
   },
   searchInputContainer: {
@@ -996,14 +516,27 @@ const styles = StyleSheet.create({
     color: colors.text,
     ...typography.body,
   },
+  clearButton: {
+    padding: 4,
+  },
   filterButton: {
-    width: 40,
+    width: 48,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 4,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     marginLeft: 12,
-    backgroundColor: colors.lightGray,
-    borderRadius: 8,
+  },
+  activeFilterButton: {
+    backgroundColor: colors.primary,
+    elevation: 6,
+    shadowOpacity: 0.2,
   },
   cartButton: {
     position: 'absolute',
@@ -1040,162 +573,81 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  filtersContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
     padding: 20,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    ...typography.h4,
-    fontWeight: '700',
-  },
-  filterOptions: {
-    maxHeight: '80%',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    elevation: 8,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   filterSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
-  filterBadge: {
-    position: 'absolute',
-    right: 8,
-    top: -8,
-    backgroundColor: colors.primary,
-    color: colors.white,
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    textAlign: 'center',
-    lineHeight: 20,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  filterSectionTitle: {
-    ...typography.subtitle,
+  filterHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
-    fontWeight: '600',
+  },
+  filterTitle: {
+    ...typography.heading4,
+  },
+  clearText: {
+    ...typography.bodySmall,
+    color: colors.primary,
   },
   filterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  priceRangeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
   tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
-  tagButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  tagButtonSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  tagButtonText: {
-    ...typography.small,
-    color: colors.text,
-  },
-  tagButtonTextSelected: {
-    color: colors.white,
-  },
-  sliderTrack: {
-    height: 4,
-    marginVertical: 12,
-  },
-  sliderLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  sliderLabel: {
-    ...typography.small,
-    color: colors.lightText,
-  },
-  priceButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  priceButtonSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  priceButtonText: {
-    ...typography.body,
-    color: colors.text,
-  },
-  priceButtonTextSelected: {
-    color: colors.white,
+    flexDirection: "row",
+    flexWrap: "wrap",
   },
   ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 8,
   },
-  ratingStar: {
-    fontSize: 24,
-    color: colors.lightGray,
-  },
-  ratingStarSelected: {
-    color: colors.warning,
+  starButton: {
+    paddingHorizontal: 4,
   },
   ratingText: {
-    ...typography.body,
-    marginLeft: 8,
+    ...typography.bodySmall,
+    color: colors.primary,
+    textAlign: "center",
+    marginTop: 8,
+    fontWeight: "600",
   },
-  modalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 16,
+  clearAllButton: {
+    alignItems: "center",
+    paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: colors.divider,
   },
-  resetButton: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginRight: 8,
+  clearAllText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: "600",
   },
-  applyButton: {
-    flex: 2,
-    backgroundColor: colors.primary,
+  restaurantCountContainer: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 4,
   },
-  resetButtonText: {
-    ...typography.button,
+  restaurantCountText: {
+    ...typography.body,
     color: colors.text,
-  },
-  applyButtonText: {
-    ...typography.button,
-    color: colors.white,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 10,
   },
   loadingContainer: {
     flex: 1,

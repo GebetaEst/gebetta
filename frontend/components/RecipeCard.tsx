@@ -126,7 +126,7 @@ export default function RecipeCard({
           </View>
           <View style={styles.metaItem}>
             <Feather name="star" size={16} color={colors.warning} style={styles.starIcon} />
-            <Text style={[styles.metaText, { color: colors.warning }]}>{recipe.rating.toFixed(1)}</Text>
+            <Text style={[styles.metaText, { color: colors.warning }]}>{recipe.rating?.toFixed(1)}</Text>
           </View>
         </View>
 

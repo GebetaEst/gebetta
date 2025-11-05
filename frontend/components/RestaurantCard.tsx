@@ -32,7 +32,11 @@ export default function RestaurantCard({ restaurant, onPress }: RestaurantCardPr
   const formattedDeliveryFee = deliveryFee === 0 ? "Free" : `$${deliveryFee}`;
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity 
+      style={styles.container} 
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <View style={styles.imageContainer}>
         {imageLoading && (
           <View style={styles.imagePlaceholder}>

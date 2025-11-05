@@ -53,7 +53,6 @@ export default function CheckoutScreen() {
     getCartItems,
     getCartSubtotal,
     getDeliveryFee,
-    getTax,
     getCartTotal,
     restaurantId,
     serviceType,
@@ -66,7 +65,6 @@ export default function CheckoutScreen() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
 
-  console.log(user?.token)
 
   // Helper function to get address ID
   const getAddressId = (address: Address) => address?._id || null;
@@ -138,7 +136,7 @@ export default function CheckoutScreen() {
   const [showWebView, setShowWebView] = useState(false);
   const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
   const [orderDescription, setOrderDescription] = useState("");
-  const [APIDeliveryFee, setAPIDeliveryFee] = useState(0);
+  const [APIDeliveryFee, setAPIDeliveryFee] = useState<any>({});
   const [deliveryFeeDisplay, setDeliveryFeeDisplay] = useState(0);
 
   // Location tracking states
@@ -150,14 +148,15 @@ export default function CheckoutScreen() {
   const cartItems = getCartItems();
   const subtotal = getCartSubtotal();
   const deliveryFee = getDeliveryFee();
-  const tax = getTax();
 
   // Calculate delivery fee from API based on vehicle type
   const getAPIDeliveryFee = () => {
     if (serviceType !== "delivery") return 0;
-    if (vehicleType === "Car") return APIDeliveryFee.Car?.deliveryFee || 0;
-    if (vehicleType === "Bicycle") return APIDeliveryFee.Bicycle?.deliveryFee || 0;
-    if (vehicleType === "Motorcycle") return APIDeliveryFee.Motor?.deliveryFee || 0;
+    if (!APIDeliveryFee || typeof APIDeliveryFee !== 'object') return 0;
+    
+    if (vehicleType === "Car" && APIDeliveryFee.Car) return APIDeliveryFee.Car.deliveryFee || 0;
+    if (vehicleType === "Bicycle" && APIDeliveryFee.Bicycle) return APIDeliveryFee.Bicycle.deliveryFee || 0;
+    if (vehicleType === "Motor" && APIDeliveryFee.Motor) return APIDeliveryFee.Motor.deliveryFee || 0;
     return 0;
   };
 
@@ -271,7 +270,11 @@ export default function CheckoutScreen() {
     // Set default address if available
     if (addresses.length > 0 && serviceType === "delivery") {
       const defaultAddress = addresses.find((addr) => addr.isDefault);
-      setSelectedAddress(getAddressId(defaultAddress) || getAddressId(addresses[0]) || null);
+      setSelectedAddress(
+        (defaultAddress ? getAddressId(defaultAddress) : null) || 
+        getAddressId(addresses[0]) || 
+        null
+      );
     }
     // console.log("(o) (o)" , addresses)
     // Get location permission status on mount
@@ -291,24 +294,45 @@ export default function CheckoutScreen() {
     router.push("/profile/addresses/add");
   };
   const token = user?.token;
+
+
+
   const handelDeliveryFee = async () => {
-    if (serviceType !== "delivery" || !selectedAddress) {
+    // Only fetch delivery fee when service type is delivery
+    if (serviceType !== "delivery") {
       return;
     }
 
     // Find the selected address from the addresses array
     const address = addresses.find(addr => getAddressId(addr) === selectedAddress);
-    if (!address) {
+    
+    // Determine destination: use address coordinates if available, otherwise use currentLocation
+    let destinationCoords = null;
+    
+    if (address && address.coordinates && address.coordinates.lat && address.coordinates.lng) {
+      // Use address coordinates
+      destinationCoords = {
+        lat: address.coordinates.lat,
+        lng: address.coordinates.lng
+      };
+    } else if (currentLocation) {
+      // Fallback to current location
+      destinationCoords = {
+        lat: currentLocation.latitude,
+        lng: currentLocation.longitude
+      };
+    }
+    
+    // If no destination is available, return early
+    if (!destinationCoords) {
+      console.log("No destination coordinates available for delivery fee calculation");
       return 0;
     }
 
     const deliveryPayload = {
       restaurantId: restaurantId,
-      destination: {
-        lat: address.coordinates.lat,
-        lng: address.coordinates.lng
-      }
-    }
+      destination: destinationCoords
+    };
 
     try {
       const deliveryResponse = await fetch("https://gebeta-delivery1.onrender.com/api/v1/orders/estimate-delivery-fee", {
@@ -320,22 +344,33 @@ export default function CheckoutScreen() {
         body: JSON.stringify(deliveryPayload),
       });
       const deliveryData = await deliveryResponse.json();
-      // console.log("$$$$$$ Delivery data:", deliveryData);
       setAPIDeliveryFee(deliveryData.data);
 
-      console.log("$$$$$$ APIDeliveryFee:", APIDeliveryFee);
-      return deliveryData.data.deliveryFee;
+      // Return the delivery fee for the selected vehicle type
+      if (deliveryData.data && typeof deliveryData.data === 'object') {
+        if (vehicleType.toLowerCase() === "car" && deliveryData.data.Car) {
+          return deliveryData.data.Car.deliveryFee || 0;
+        }
+        if (vehicleType.toLowerCase() === "bicycle" && deliveryData.data.Bicycle) {
+          return deliveryData.data.Bicycle.deliveryFee || 0;
+        }
+        if (vehicleType.toLowerCase() === "motor" && deliveryData.data.Motor) {
+          return deliveryData.data.Motor.deliveryFee || 0;
+        }
+      }
+      return 0;
 
     }
     catch (error) {
       console.error("Error estimating delivery fee:", error);
+
       return 0;
     }
   }
 
   useEffect(() => {
     handelDeliveryFee();
-  }, [selectedAddress, serviceType])
+  }, [selectedAddress, serviceType, vehicleType, currentLocation])
 
 
   const handlePlaceOrder = async () => {
@@ -344,7 +379,7 @@ export default function CheckoutScreen() {
 
     try {
       // Validate required fields
-      if (serviceType === "delivery" && locationRefused && !selectedAddress) {
+      if (serviceType === "delivery" && locationRefused) {
         Alert.alert("Error", "Please select a delivery address");
         setIsProcessing(false);
         return;
@@ -432,9 +467,9 @@ export default function CheckoutScreen() {
           quantity: item.quantity,
         })),
         typeOfOrder:
-          serviceType === "delivery"
+          serviceType.toLowerCase() === "delivery"
             ? "Delivery"
-            : serviceType === "pickup"
+            : serviceType.toLowerCase() === "pickup"
               ? "Pickup"
               : "Dine-in",
         // Include exact phone location if available
@@ -470,10 +505,10 @@ export default function CheckoutScreen() {
         }
       );
 
-      console.log("====", orderPayload)
+      // console.log("====", orderPayload)
       if (response.ok) {
         result = await response.json();
-        console.log("Order result:", result);
+        // console.log("Order result:", result);
 
         // Clear cart after successful order
         clearCart();
@@ -719,7 +754,7 @@ export default function CheckoutScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Delivery Vehicle</Text>
               <View style={styles.vehicleTypeContainer}>
-                {["Bicycle", "Motorcycle", "Car"].map((type) => {
+                {["Bicycle", "Motor", "Car"].map((type) => {
                   const isActive = vehicleType === type;
                   return (
                     <TouchableOpacity
@@ -740,7 +775,7 @@ export default function CheckoutScreen() {
                             isActive && styles.vehicleTypeTextActive,
                           ]}
                         >
-                          {type}
+                          {type }
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -1020,11 +1055,6 @@ export default function CheckoutScreen() {
                   <Text style={styles.summaryValue}>{apiDeliveryFee.toFixed(2)} Birr</Text>
                 </View>
               )}
-
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Tax (15%)</Text>
-                <Text style={styles.summaryValue}>{tax.toFixed(2)} Birr</Text>
-              </View>
 
               {serviceType !== "dine-in" && (
                 <View style={styles.summaryRow}>
