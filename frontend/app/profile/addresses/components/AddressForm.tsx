@@ -103,7 +103,7 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
       let location = await Location.getCurrentPositionAsync({});
       const payload = {
         name: watch('name'),
-        label: selectedLabel === 'Other' ? watch('customLabel') || selectedLabel.substring(0, 1).toUpperCase() + selectedLabel.slice(1) : selectedLabel,
+        label: selectedLabel === 'Other' ? watch('customLabel') || selectedLabel.substring(0, 1).toUpperCase() + selectedLabel.slice(1) : selectedLabel.substring(0, 1).toUpperCase() + selectedLabel.slice(1),
         additionalInfo: watch('additionalInfo'),
         // isDefault: watch('isDefault'),
         location: {

@@ -14,6 +14,7 @@ import {
   Platform,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
   StyleSheet,
   Text,
   TextInput,
@@ -37,10 +38,13 @@ interface Address {
   phoneNumber: string;
   additionalInfo?: string;
   label: string;
-  coordinates: {
+  coordinates?: {
     lat: number;
     lng: number;
-  };
+  } | null;
+  location?: {
+    coordinates?: [number, number];
+  } | null;
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;
@@ -84,10 +88,37 @@ export default function CheckoutScreen() {
     return address.additionalInfo || null;
   };
 
-  // Helper function to get address coordinates
-  const getAddressCoordinates = (address: Address) => {
-    return address.coordinates || null;
-  };
+// Helper function to get address coordinates
+const getAddressCoordinates = (
+  address: Address
+): { lat: number; lng: number } | null => {
+  if (!address) return null;
+
+  const coordinateObject = address.coordinates;
+  if (
+    coordinateObject &&
+    typeof coordinateObject.lat === "number" &&
+    typeof coordinateObject.lng === "number"
+  ) {
+    return {
+      lat: coordinateObject.lat,
+      lng: coordinateObject.lng,
+    };
+  }
+
+  const locationCoordinates = address.location?.coordinates;
+  if (
+    Array.isArray(locationCoordinates) &&
+    locationCoordinates.length >= 2 &&
+    typeof locationCoordinates[0] === "number" &&
+    typeof locationCoordinates[1] === "number"
+  ) {
+    const [lng, lat] = locationCoordinates;
+    return { lat, lng };
+  }
+
+  return null;
+};
 
   // Helper function to get formatted address display text
   const getAddressDisplayText = (address: Address) => {
@@ -104,8 +135,14 @@ export default function CheckoutScreen() {
     }
     
     // Add coordinates if available
-    if (address.coordinates?.lat && address.coordinates?.lng) {
-      parts.push(`(${address.coordinates.lat.toFixed(4)}, ${address.coordinates.lng.toFixed(4)})`);
+  const coords = getAddressCoordinates(address);
+
+  if (
+    coords &&
+    typeof coords.lat === "number" &&
+    typeof coords.lng === "number"
+  ) {
+    parts.push(`(${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`);
     }
     
     // Return combined text or fallback
@@ -161,6 +198,8 @@ export default function CheckoutScreen() {
   const [orderDescription, setOrderDescription] = useState("");
   const [APIDeliveryFee, setAPIDeliveryFee] = useState<any>({});
   const [deliveryFeeDisplay, setDeliveryFeeDisplay] = useState(0);
+  const [isDeliveryFeeLoading, setIsDeliveryFeeLoading] = useState(false);
+  
 
   // Location tracking states
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number, longitude: number } | null>(null);
@@ -186,7 +225,7 @@ export default function CheckoutScreen() {
   const apiDeliveryFee = getAPIDeliveryFee();
   const total = getCartTotal() + tip + apiDeliveryFee;
 
-  const restaurant = restaurants.find((r) => r.id === restaurantId);
+  // const restaurant = restaurants.find((r) => r.id === restaurantId);
 
   // Function to get current location
   const getCurrentLocation = async () => {
@@ -282,8 +321,8 @@ export default function CheckoutScreen() {
     }
   };
 
+  // Simulate loading data
   useEffect(() => {
-    // Simulate loading data
     const loadData = async () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setIsLoading(false);
@@ -323,22 +362,25 @@ export default function CheckoutScreen() {
   const handelDeliveryFee = async () => {
     // Only fetch delivery fee when service type is delivery
     if (serviceType !== "delivery") {
+      setIsDeliveryFeeLoading(false);
       return;
     }
 
-    let destinationCoords = null;
+    setIsDeliveryFeeLoading(true);
+
+    let destinationCoords: { lat: number; lng: number } | null = null;
     
     // Priority 1: If user chose to use address list and selected an address
     if (locationRefused && selectedAddress) {
       const address = addresses.find(addr => getAddressId(addr) === selectedAddress);
-      
-      if (address && address.coordinates && address.coordinates.lat && address.coordinates.lng) {
-        // Use the selected address coordinates
-        destinationCoords = {
-          lat: address.coordinates.lat,
-          lng: address.coordinates.lng
-        };
-        console.log("Using selected address coordinates:", destinationCoords);
+      console.log("Address:", address);
+      if (address) {
+        const addressCoords = getAddressCoordinates(address);
+        if (addressCoords) {
+          // Use the selected address coordinates
+          destinationCoords = addressCoords;
+          console.log("Using selected address coordinates:", destinationCoords);
+        }
       }
     }
     
@@ -363,6 +405,7 @@ export default function CheckoutScreen() {
     // If no destination is available, return early
     if (!destinationCoords) {
       console.log("No destination coordinates available for delivery fee calculation");
+      setIsDeliveryFeeLoading(false);
       return 0;
     }
 
@@ -403,12 +446,21 @@ export default function CheckoutScreen() {
 
       return 0;
     }
+    finally {
+      setIsDeliveryFeeLoading(false);
+    }
   }
 
   useEffect(() => {
     handelDeliveryFee();
   }, [selectedAddress, serviceType, vehicleType, currentLocation])
 
+  //handlePlaceOrder function to place an order
+  const SERVICE_TYPE_TO_ORDER_TYPE = {
+    delivery: "Delivery",
+    pickup: "Pickup",
+    "dine-in": "Dine-in",
+  } as const;
 
   const handlePlaceOrder = async () => {
     setIsProcessing(true);
@@ -416,11 +468,11 @@ export default function CheckoutScreen() {
   
     try {
       // Validate required fields
-      if (serviceType === "delivery" && locationRefused) {
-        Alert.alert("Error", "Please select a delivery address");
-        setIsProcessing(false);
-        return;
-      }
+      // if (serviceType === "delivery" && locationRefused) {
+      //   Alert.alert("Error", "Please select a delivery address");
+      //   setIsProcessing(false);
+      //   return;
+      // }
   
       if (serviceType === "dine-in" && !tableNumber) {
         Alert.alert("Error", "Please enter your table number");
@@ -464,64 +516,63 @@ export default function CheckoutScreen() {
         (addr) => getAddressId(addr) === selectedAddress
       );
   
-      // Get destination coordinates and address for delivery
-      let destinationLocation = null;
-      let deliveryAddress = "";
+      // Get destination coordinates for delivery
+      let destinationLocation: { lat: number; lng: number } | null = null;
   
       if (serviceType === "delivery") {
         if (selectedAddressData) {
           // Use selected address
           const addressCoords = getAddressCoordinates(selectedAddressData);
-          deliveryAddress = getAddressDisplayText(selectedAddressData); // You'll need this function
           
           if (addressCoords) {
             destinationLocation = {
-              latitude: addressCoords.lat,
-              longitude: addressCoords.lng,
-              address: deliveryAddress
+              lat: addressCoords.lat,
+              lng: addressCoords.lng,
             };
           } else {
             // Fallback to phone location if address doesn't have coordinates
             destinationLocation = phoneLocation ? {
-              latitude: phoneLocation.latitude,
-              longitude: phoneLocation.longitude,
-              address: deliveryAddress || "Current Location"
+              lat: phoneLocation.latitude,
+              lng: phoneLocation.longitude,
             } : {
-              latitude: 9.033872,
-              longitude: 38.750659,
-              address: "Default Location"
+              lat: 9.033872,
+              lng: 38.750659,
             };
           }
         } else {
           // Use phone location as destination when no address is selected
-          deliveryAddress = "Current Location";
           destinationLocation = phoneLocation ? {
-            latitude: phoneLocation.latitude,
-            longitude: phoneLocation.longitude,
-            address: deliveryAddress
+            lat: phoneLocation.latitude,
+            lng: phoneLocation.longitude,
           } : {
-            latitude: 9.033872,
-            longitude: 38.750659,
-            address: "Default Location"
+            lat: 9.033872,
+            lng: 38.750659,
           };
         }
       }
   
       // Base payload structure
+      const typeOfOrder =
+        SERVICE_TYPE_TO_ORDER_TYPE[
+          serviceType as keyof typeof SERVICE_TYPE_TO_ORDER_TYPE
+        ] || "Delivery";
+
       const orderPayload: any = {
         restaurantId: restaurantId,
-        items: cartItems.map((item) => ({
+        orderItems: cartItems.map((item) => ({
           foodId: item.menuItemId,
           quantity: item.quantity,
         })),
+        typeOfOrder,
         tip: tip,
         description: orderDescription,
       };
   
       // Add service type specific fields
       if (serviceType === "delivery") {
+        orderPayload.vehicleType = vehicleType;
         orderPayload.destinationLocation = destinationLocation;
-        orderPayload.deliveryVehicle = vehicleType;
+        orderPayload.callculatedDeliveryFee = apiDeliveryFee;
       } else if (serviceType === "pickup") {
         orderPayload.pickupTime = pickupTime;
       } else if (serviceType === "dine-in") {
@@ -532,12 +583,12 @@ export default function CheckoutScreen() {
       console.log("Order Payload being sent:", JSON.stringify(orderPayload, null, 2));
 
       // Validate destinationLocation for delivery orders
-      if (serviceType === "delivery" && !orderPayload.destinationLocation) {
+      if (serviceType === "delivery" && !destinationLocation) {
         Alert.alert("Error", "Delivery location is required");
         setIsProcessing(false);
         return;
       }
-
+// console.log("Order Payload being sent:", JSON.stringify(orderPayload, null, 2));
       const response = await fetch(
         "https://gebeta-delivery1.onrender.com/api/v1/orders/place-order",
         {
@@ -550,12 +601,15 @@ export default function CheckoutScreen() {
         }
       );
   
+      const responseData = await response.json().catch(() => null);
+        console.log("Response Data:333333333333333333", responseData);
       if (response.ok) {
-        result = await response.json();
-        
+        result = responseData;
+
         // Clear cart after successful order
         clearCart();
-  
+        console.log("Order placed successfully:", result);
+
         // If a payment checkout_url is available, show WebView
         if (
           typeof result === "object" &&
@@ -566,7 +620,7 @@ export default function CheckoutScreen() {
           setShowWebView(true);
           return; // Don't show success alert yet, wait for payment
         }
-  
+
         Alert.alert("Success", "Order placed successfully!", [
           {
             text: "OK",
@@ -577,14 +631,15 @@ export default function CheckoutScreen() {
           },
         ]);
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Order failed:", errorData);
+        console.error("Order failed:", responseData);
         console.error("Response status:", response.status);
         console.error("Payload sent:", JSON.stringify(orderPayload, null, 2));
-        Alert.alert("Error", errorData.message || "Failed to place order");
+        Alert.alert("Error from the back", responseData?.message || "Failed to place order");
       }
     } catch (error) {
       console.error("Order error:", error);
+      console.log("Result:333333333333333333", result);
+
       Alert.alert(
         "Error",
         error instanceof Error ? error.message : "Failed to place order"
@@ -594,6 +649,7 @@ export default function CheckoutScreen() {
     }
   };
 
+  //handleTipChange function to handle tip change
   const handleTipChange = (amount: number) => {
     setTip(amount);
     setCustomTip("");
@@ -666,6 +722,7 @@ export default function CheckoutScreen() {
         animationType="slide"
         onRequestClose={() => setShowWebView(false)}
       >
+        {/* WebView for payment */}
         <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
           <View style={{ flexDirection: "row", alignItems: "center", padding: 8, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: colors.divider }}>
             <TouchableOpacity onPress={() => { setShowWebView(false); router.replace("/(tabs)") }} style={{ padding: 8 }}>
@@ -728,30 +785,6 @@ export default function CheckoutScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Restaurant Info Card */}
-          {restaurant && (
-            <View style={styles.restaurantCard}>
-              <View style={styles.restaurantCardGradient}>
-                <Image
-                  source={{ uri: restaurant.imageUrl }}
-                  style={styles.restaurantImage}
-                  contentFit="cover"
-                />
-                <View style={styles.restaurantDetails}>
-                  <Text style={styles.restaurantName}>{restaurant.name}</Text>
-                  <View style={styles.deliveryTimeContainer}>
-                    <Clock size={16} color={colors.white} style={styles.deliveryTimeIcon} />
-                    <Text style={styles.deliveryTimeText}>
-                      Estimated {serviceType === "delivery" ? "delivery" : serviceType === "pickup" ? "pickup" : "preparation"}: {restaurant.estimatedDeliveryTime}
-                    </Text>
-                  </View>
-                  <View style={styles.ratingContainer}>
-                    <Text style={styles.ratingText}>4.8 • Ethiopian Cuisine</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
 
           {/* Service Type Selection */}
           <View style={styles.section}>
@@ -791,7 +824,6 @@ export default function CheckoutScreen() {
               })}
             </View>
           </View>
-
 
 
           {/* Vehicle Type for Delivery */}
@@ -870,12 +902,13 @@ export default function CheckoutScreen() {
           </Text> */}
           </View>
 
-          {/* Delivery Address - Only show if user refused location */}
+          {/* Delivery Address - Show/Hide Address List */}
           <Button style={styles.section} title={`${locationRefused ? "Hide Address List" : "Use Other Addresses"}`} onPress={() => {
             setLocationRefused(prev => !prev);
             fetchAddresses();
           }} />
-          {/* <Text>Location Refused: {locationRefused.toString()}</Text> */}
+
+          {/* Delivery Address - Only show if user refused location */}
           {serviceType === "delivery" && locationRefused && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Delivery Address</Text>
@@ -904,9 +937,7 @@ export default function CheckoutScreen() {
                         <View style={styles.addressDetails}>
                           <Text style={styles.addressType}>
                             {getAddressType(address).charAt(0).toUpperCase() + getAddressType(address).slice(1)}
-                            {address.isDefault && (
-                              <Text style={styles.defaultBadge}> • Default</Text>
-                            )}
+                           
                           </Text>
                           <Text style={styles.addressText}>
                             {getAddressDisplayName(address)}
@@ -1097,7 +1128,11 @@ export default function CheckoutScreen() {
               {serviceType === "delivery" && (
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Delivery Fee</Text>
-                  <Text style={styles.summaryValue}>{apiDeliveryFee.toFixed(2)} Birr</Text>
+                  {isDeliveryFeeLoading ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Text style={styles.summaryValue}>{apiDeliveryFee.toFixed(2)} Birr</Text>
+                  )}
                 </View>
               )}
 
@@ -1112,15 +1147,16 @@ export default function CheckoutScreen() {
 
               <View style={styles.summaryRow}>
                 <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalValue}>{total.toFixed(2)} Birr</Text>
+                {isDeliveryFeeLoading ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text style={styles.totalValue}>{total.toFixed(2)} Birr</Text>
+                )}
               </View>
             </View>
           </View>
 
-          {/* Security Badge */}
-          {/* <View style={styles.securityBadge}>
-          <Text style={styles.securityText}>Secure checkout with encryption</Text>
-        </View> */}
+          
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -1130,7 +1166,11 @@ export default function CheckoutScreen() {
           <View style={styles.totalContainer}>
             <View>
               <Text style={styles.footerTotalLabel}>Total Amount</Text>
-              <Text style={styles.totalAmount}>{total.toFixed(2)} Birr</Text>
+              {isDeliveryFeeLoading ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Text style={styles.totalAmount}>{total.toFixed(2)} Birr</Text>
+                  )}
             </View>
             <View style={styles.orderTypeBadge}>
               <Text style={styles.orderTypeText}>{getServiceTypeLabel(serviceType)}</Text>

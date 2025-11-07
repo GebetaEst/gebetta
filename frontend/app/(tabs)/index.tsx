@@ -10,7 +10,7 @@ import { useCartStore } from "@/store/cartStore";
 import { Recipe } from "@/types/recipe";
 import { Restaurant } from "@/types/restaurant";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { ChevronRight, MapPin, Clock, ShoppingBag, Search, Star } from "lucide-react-native";
 import React, { useState, useCallback, useEffect } from "react";
 import * as Location from 'expo-location';
@@ -517,11 +517,18 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.recipesScrollContent}
             >
-              {filteredFoods.map((food , index) => (
+              {filteredFoods.map((food , index) =>  (
                 <TouchableOpacity
                   key={index}
                   style={styles.recipeCard}
-                  onPress={() => router.push(`/recipe/${food._id}` as any)}
+                  onPress={() => {
+                    const restaurantId = food.restaurantId ?? food.menuId?.restaurantId;
+                    const foodId = food._id ?? food.id;
+
+                    if (restaurantId && foodId) {
+                      router.push(`/menu-item/${restaurantId}/${foodId}`);
+                    }
+                  }}
                 >
                   <Image
                     source={{ uri: food.imageCover }}
@@ -545,7 +552,7 @@ export default function HomeScreen() {
                     </View>
                   </View>
                 </TouchableOpacity>
-              ))}
+               ) , console.log("Food:333333333333333333", JSON.stringify(filteredFoods, null, 2)))}
             </ScrollView>
           </View>
 

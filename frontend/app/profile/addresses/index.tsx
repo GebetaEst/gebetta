@@ -552,12 +552,7 @@ export default function AddressesScreen() {
                         paddingTop: 12
                       }}
                     >
-                      <TouchableOpacity 
-                        style={{ marginRight: 16 }}
-                        onPress={() => handleEditAddress(address.id)}
-                      >
-                        <Text style={{ color: colors.primary }}>Edit</Text>
-                      </TouchableOpacity>
+                      
                       
                       {/* <TouchableOpacity 
                         style={{ marginRight: 16 }}

@@ -3,7 +3,7 @@ import typography from "@/constants/typography";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/useAuthStore";
-import { ChevronRight, Clock, MapPin, ShoppingBag, X } from "lucide-react-native";
+import { ChevronRight, Clock, MapPin, ShoppingBag, X, ChevronDown, ChevronUp } from "lucide-react-native";
 import React, { useEffect, useState, useRef } from "react";
 import {
   SafeAreaView,
@@ -33,6 +33,7 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
+  const [fullScreenOrderId, setFullScreenOrderId] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -133,6 +134,10 @@ export default function OrdersScreen() {
 
   const handleTrackDelivery = (id: string) => {
     setTrackingOrderId(trackingOrderId === id ? null : id);
+  };
+
+  const handleFullScreen = (id: string) => {
+    setFullScreenOrderId(id);
   };
 
   const getStatusColor = (status: string) => {
@@ -494,9 +499,41 @@ export default function OrdersScreen() {
                                   style={styles.trackButtonGradient}
                                 >
                                   <Text style={styles.trackButtonText}>
-                                    {trackingOrderId === orderId ? "Close Map" : "Track Delivery"}
+                                    {trackingOrderId === orderId ? "Hide Map" : "Track Delivery"}
                                   </Text>
-                                  <ChevronRight size={18} color="#FFFFFF" />
+                                  {trackingOrderId === orderId ? (
+                                    <ChevronUp size={18} color="#FFFFFF" />
+                                  ) : (
+                                    <ChevronDown size={18} color="#FFFFFF" />
+                                  )}
+                                </LinearGradient>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+
+                          {/* Inline Map View */}
+                          {trackingOrderId === orderId && user?.token && user?._id && (
+                            <View style={styles.inlineMapContainer}>
+                              <View style={styles.inlineMapWrapper}>
+                                <TrackingMap 
+                                  orderId={orderId}
+                                />
+                              </View>
+                              <TouchableOpacity
+                                style={styles.fullScreenButton}
+                                onPress={() => handleFullScreen(orderId)}
+                                activeOpacity={0.9}
+                              >
+                                <LinearGradient
+                                  colors={["#3B82F6", "#2563EB"]}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 1, y: 0 }}
+                                  style={styles.fullScreenButtonGradient}
+                                >
+                                  <Text style={styles.fullScreenButtonIcon}>🔍</Text>
+                                  <Text style={styles.fullScreenButtonText}>
+                                    View Full Screen
+                                  </Text>
                                 </LinearGradient>
                               </TouchableOpacity>
                             </View>
@@ -509,12 +546,12 @@ export default function OrdersScreen() {
           </View>
         )}
 
-        {trackingOrderId && user?.token && user?._id && (
+        {fullScreenOrderId && user?.token && user?._id && (
           <Modal
             visible={true}
             animationType="slide"
             transparent={false}
-            onRequestClose={() => setTrackingOrderId(null)}
+            onRequestClose={() => setFullScreenOrderId(null)}
           >
             <View style={styles.modalContainer}>
               <LinearGradient
@@ -525,10 +562,10 @@ export default function OrdersScreen() {
               >
                 <View style={styles.modalHeaderContent}>
                   <Text style={styles.modalTitle}>
-                   Order {currentOrder?.orderCode || trackingOrderId}
+                    Tracking Delivery - Order {orders.find(o => o._id === fullScreenOrderId)?.orderCode || fullScreenOrderId}
                   </Text>
                   <TouchableOpacity
-                    onPress={() => setTrackingOrderId(null)}
+                    onPress={() => setFullScreenOrderId(null)}
                     style={styles.closeButtonContainer}
                   >
                     <X size={24} color="#6B7280" />
@@ -537,7 +574,7 @@ export default function OrdersScreen() {
               </LinearGradient>
               <View style={styles.modalBody}>
                 <TrackingMap 
-                  orderId={currentOrder?.orderCode || trackingOrderId}
+                  orderId={fullScreenOrderId || ""}
                 />
               </View>
             </View>
@@ -861,5 +898,44 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     flex: 1,
+  },
+  inlineMapContainer: {
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  inlineMapWrapper: {
+    height: 250,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  fullScreenButton: {
+    margin: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  fullScreenButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  fullScreenButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.white,
+    marginLeft: 8,
+  },
+  fullScreenButtonIcon: {
+    fontSize: 16,
   },
 });
