@@ -8,7 +8,7 @@ import { OrderServiceType } from "@/types/restaurant";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Clock, MapPin, CreditCard, ShoppingBag } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import {
   Alert,
   Platform,
@@ -23,12 +23,15 @@ import {
   Modal,
   Dimensions,
   KeyboardAvoidingView,
+  LayoutChangeEvent,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 
 const { width } = Dimensions.get("window");
 const isTablet = width > 768;
+
+type SectionKey = "location" | "orderNotes" | "tip" | "total";
 
 // Define address interface based on API response
 interface Address {
@@ -64,6 +67,30 @@ export default function CheckoutScreen() {
     clearCart,
   } = useCartStore();
   const { user } = useAuthStore();
+
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const sectionPositions = useRef<Record<SectionKey, number | null>>({
+    location: null,
+    orderNotes: null,
+    tip: null,
+    total: null,
+  });
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSectionRef = useRef<SectionKey | null>(null);
+  const pendingScrollDelayRef = useRef<number>(0);
+  const guidedScrollActive = useRef(false);
+  const locationStepCompletedRef = useRef(false);
+  const orderNotesStepCompletedRef = useRef(false);
+  const tipStepCompletedRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // State for addresses from API
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -329,15 +356,6 @@ const getAddressCoordinates = (
     };
     loadData();
 
-    // Set default address if available
-    if (addresses.length > 0 && serviceType === "delivery") {
-      const defaultAddress = addresses.find((addr) => addr.isDefault);
-      setSelectedAddress(
-        (defaultAddress ? getAddressId(defaultAddress) : null) || 
-        getAddressId(addresses[0]) || 
-        null
-      );
-    }
     // console.log("(o) (o)" , addresses)
     // Get location permission status on mount
     const checkLocationPermission = async () => {
@@ -649,10 +667,72 @@ const getAddressCoordinates = (
     }
   };
 
+  const getOrderedSections = useCallback(() => {
+    const sections: SectionKey[] = [];
+    if (serviceType === "delivery") {
+      sections.push("location");
+    }
+    sections.push("orderNotes");
+    if (serviceType !== "dine-in") {
+      sections.push("tip");
+    }
+    sections.push("total");
+    return sections;
+  }, [serviceType]);
+
+  const scrollToSection = useCallback((section: SectionKey, delay = 500) => {
+    if (!scrollViewRef.current) return;
+    if (!getOrderedSections().includes(section)) return;
+
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+
+    const targetY = sectionPositions.current[section];
+
+    if (typeof targetY !== "number") {
+      pendingSectionRef.current = section;
+      pendingScrollDelayRef.current = delay;
+      return;
+    }
+
+    scrollTimeoutRef.current = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({
+        y: Math.max(targetY - 24, 0),
+        animated: true,
+      });
+      scrollTimeoutRef.current = null;
+    }, delay);
+  }, [getOrderedSections]);
+
+  const scrollToNextSection = useCallback((current: SectionKey, delay = 500) => {
+    const orderedSections = getOrderedSections();
+    const currentIndex = orderedSections.indexOf(current);
+    if (currentIndex === -1) return;
+    const nextSection = orderedSections[currentIndex + 1];
+    if (!nextSection) return;
+    scrollToSection(nextSection, delay);
+  }, [getOrderedSections, scrollToSection]);
+
+  const resetGuidedScrollProgress = () => {
+    guidedScrollActive.current = true;
+    locationStepCompletedRef.current = false;
+    orderNotesStepCompletedRef.current = false;
+    tipStepCompletedRef.current = false;
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+    pendingSectionRef.current = null;
+    pendingScrollDelayRef.current = 0;
+  };
+
   //handleTipChange function to handle tip change
   const handleTipChange = (amount: number) => {
     setTip(amount);
     setCustomTip("");
+    handleTipStepCompletion();
   };
 
   const handleCustomTipChange = (value: string) => {
@@ -661,7 +741,63 @@ const getAddressCoordinates = (
     setTip(numericValue);
   };
 
+  const handleTipStepCompletion = () => {
+    if (!getOrderedSections().includes("tip")) return;
+    if (!guidedScrollActive.current) return;
+    if (tipStepCompletedRef.current) return;
+    tipStepCompletedRef.current = true;
+    scrollToNextSection("tip");
+  };
+
+  const handleSectionLayout = (section: SectionKey) => (event: LayoutChangeEvent) => {
+    sectionPositions.current[section] = event.nativeEvent.layout.y;
+
+    if (pendingSectionRef.current === section) {
+      const delay = pendingScrollDelayRef.current;
+      pendingSectionRef.current = null;
+      pendingScrollDelayRef.current = 0;
+      scrollToSection(section, delay);
+    }
+  };
+
+  const handleOrderNotesComplete = () => {
+    if (!guidedScrollActive.current) return;
+    if (orderNotesStepCompletedRef.current) return;
+    orderNotesStepCompletedRef.current = true;
+    scrollToNextSection("orderNotes");
+  };
+
+  const handleVehicleTypeSelection = (type: string) => {
+    setVehicleType(type);
+    if (serviceType === "delivery") {
+      resetGuidedScrollProgress();
+      scrollToSection("location", 500);
+    }
+  };
+
+  useEffect(() => {
+    if (serviceType !== "delivery") {
+      guidedScrollActive.current = false;
+      locationStepCompletedRef.current = false;
+      orderNotesStepCompletedRef.current = false;
+      tipStepCompletedRef.current = false;
+      return;
+    }
+
+    if (!guidedScrollActive.current) return;
+    if (locationStepCompletedRef.current) return;
+
+    if (currentLocation || selectedAddress) {
+      locationStepCompletedRef.current = true;
+      scrollToNextSection("location");
+    }
+  }, [currentLocation, scrollToNextSection, selectedAddress, serviceType]);
+
   const handleServiceTypeChange = (type: OrderServiceType) => {
+    guidedScrollActive.current = false;
+    locationStepCompletedRef.current = false;
+    orderNotesStepCompletedRef.current = false;
+    tipStepCompletedRef.current = false;
     setServiceType(type);
 
     // Reset related fields when changing service type
@@ -780,6 +916,7 @@ const getAddressCoordinates = (
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ScrollView
+          ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -840,7 +977,7 @@ const getAddressCoordinates = (
                         styles.vehicleTypeButton,
                         isActive && styles.vehicleTypeButtonActive,
                       ]}
-                      onPress={() => setVehicleType(type)}
+                      onPress={() => handleVehicleTypeSelection(type)}
                     >
                       <Text style={styles.vehicleEmoji}>
                         {type === "Car" ? "🚗" : type === "Bicycle" ? "🚲" : "🏍️"}
@@ -862,7 +999,7 @@ const getAddressCoordinates = (
             </View>
           )}
           {/* Location Tracking Section */}
-          <View style={styles.section}>
+          <View style={styles.section} onLayout={handleSectionLayout("location")}>
             <Text style={styles.sectionTitle}>Use Current location</Text>
             <View style={styles.locationContainer}>
               {currentLocation ? (
@@ -1037,7 +1174,7 @@ const getAddressCoordinates = (
           )}
 
           {/* Order Description */}
-          <View style={styles.section}>
+          <View style={styles.section} onLayout={handleSectionLayout("orderNotes")}>
             <Text style={styles.sectionTitle}>Order Notes</Text>
             <View style={styles.orderDescriptionContainer}>
               <TextInput
@@ -1049,28 +1186,57 @@ const getAddressCoordinates = (
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
+                onEndEditing={handleOrderNotesComplete}
+                onBlur={handleOrderNotesComplete}
               />
             </View>
           </View>
 
           {/* Order Items */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Order</Text>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <View style={styles.sectionIcon}>
+                  <ShoppingBag size={20} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={[styles.sectionTitle, styles.sectionTitleCompact]}>Your Order</Text>
+                </View>
+              </View>
+              <View style={styles.sectionBadge}>
+                <Text style={styles.sectionBadgeText}>
+                  {cartItems.length} {cartItems.length === 1 ? "item" : "items"}
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.orderItemsCard}>
               {cartItems.map((item, index) => (
-                <View key={item.menuItemId} style={[
-                  styles.orderItem,
-                  index === cartItems.length - 1 && styles.lastOrderItem
-                ]}>
+                <View
+                  key={item.menuItemId}
+                  style={[
+                    styles.orderItem,
+                    index === cartItems.length - 1 && styles.lastOrderItem,
+                  ]}
+                >
                   <View style={styles.orderItemLeft}>
                     <View style={styles.quantityBadge}>
                       <Text style={styles.quantityText}>{item.quantity}</Text>
                     </View>
-                    <Text style={styles.orderItemName}>{item.menuItem.name}</Text>
+                    <View style={styles.orderItemDetails}>
+                      <Text style={styles.orderItemName}>{item.menuItem.name}</Text>
+                      {item.menuItem?.description ? (
+                        <Text style={styles.orderItemMeta} numberOfLines={1}>
+                          {item.menuItem.description}
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
-                  <Text style={styles.orderItemPrice}>
-                    {(item.menuItem.price * item.quantity).toFixed(2)} Birr
-                  </Text>
+                  <View style={styles.orderItemRight}>
+                    <Text style={styles.orderItemPrice}>
+                      {(item.menuItem.price * item.quantity).toFixed(2)} Birr
+                    </Text>
+                  </View>
                 </View>
               ))}
             </View>
@@ -1078,7 +1244,7 @@ const getAddressCoordinates = (
 
           {/* Tip Section */}
           {serviceType !== "dine-in" && (
-            <View style={styles.section}>
+            <View style={styles.section} onLayout={handleSectionLayout("tip")}>
               <Text style={styles.sectionTitle}>Add a Tip</Text>
               <View style={styles.tipContainer}>
                 {[0, 10, 20, 30, 50, 100].map((amount) => (
@@ -1110,13 +1276,15 @@ const getAddressCoordinates = (
                   value={customTip}
                   onChangeText={handleCustomTipChange}
                   keyboardType="numeric"
+                  onEndEditing={handleTipStepCompletion}
+                  onBlur={handleTipStepCompletion}
                 />
               </View>
             </View>
           )}
 
           {/* Order Summary */}
-          <View style={styles.orderSummaryCard}>
+          <View style={styles.orderSummaryCard} onLayout={handleSectionLayout("total")}>
             <View style={styles.orderSummaryContainer}>
               <Text style={styles.orderSummaryTitle}>Order Summary</Text>
 
@@ -1312,6 +1480,52 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.text,
     marginBottom: 16,
+  },
+  sectionTitleCompact: {
+    marginBottom: 4,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  sectionHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  sectionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + "15",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: colors.lightText,
+    marginTop: 4,
+  },
+  sectionBadge: {
+    backgroundColor: colors.primary + "12",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  sectionBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  sectionHelperText: {
+    fontSize: 13,
+    color: colors.lightText,
+    marginBottom: 12,
   },
   serviceTypeContainer: {
     flexDirection: "row",
@@ -1623,54 +1837,76 @@ const styles = StyleSheet.create({
     minHeight: 80,
   },
   orderItemsCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
+    backgroundColor: colors.white,
+    borderRadius: 20,
     padding: 20,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.primary + "10",
+    elevation: 6,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
   },
   orderItem: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
+    gap: 12,
   },
   lastOrderItem: {
     borderBottomWidth: 0,
   },
   orderItemLeft: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     flex: 1,
+    gap: 12,
   },
   quantityBadge: {
     backgroundColor: colors.primary,
     borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     marginRight: 12,
-    minWidth: 24,
-    alignItems: 'center',
+    minWidth: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
   quantityText: {
     color: colors.white,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
   },
   orderItemName: {
     fontSize: 16,
     color: colors.text,
+    fontWeight: "600",
+    flexShrink: 1,
+    marginBottom: 4,
+  },
+  orderItemDetails: {
     flex: 1,
+  },
+  orderItemMeta: {
+    fontSize: 12,
+    color: colors.lightText,
+  },
+  orderItemRight: {
+    alignItems: "flex-end",
+    justifyContent: "flex-start",
   },
   orderItemPrice: {
     fontSize: 16,
     fontWeight: "600",
     color: colors.primary,
+    backgroundColor: colors.primary + "15",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   tipContainer: {
     flexDirection: "row",

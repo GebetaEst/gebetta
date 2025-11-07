@@ -3,7 +3,7 @@ import typography from "@/constants/typography";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/useAuthStore";
-import { ChevronRight, Clock, MapPin, ShoppingBag, X, ChevronDown, ChevronUp } from "lucide-react-native";
+import { ChevronRight, Clock, MapPin, ShoppingBag, X, ChevronDown, ChevronUp, ScanQrCodeIcon } from "lucide-react-native";
 import React, { useEffect, useState, useRef } from "react";
 import {
   SafeAreaView,
@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import TrackingMap from "./TrackingMap";
+import { ScanQrCode } from "lucide-react-native";
 
 
 export default function OrdersScreen() {
@@ -34,6 +35,10 @@ export default function OrdersScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
   const [fullScreenOrderId, setFullScreenOrderId] = useState<string | null>(null);
+  const [qrModalData, setQrModalData] = useState<{
+    orderCode: string;
+    verificationCode: string;
+  } | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -63,9 +68,10 @@ export default function OrdersScreen() {
         throw new Error("Failed to fetch orders");
       }
       const data = await res.json();
+      console.log('#########  data', data);
       // The API returns { data: [orders] }
       
-      setOrders(Array.isArray(data.data.orders) ? data.data.orders : []);
+      setOrders(Array.isArray(data.data) ? data.data : []);
     } catch (err: any) {
       setFetchError(err.message || "Failed to fetch orders");
       setOrders([]);
@@ -140,17 +146,29 @@ export default function OrdersScreen() {
     setFullScreenOrderId(id);
   };
 
+  const normaliseStatus = (status: string) =>
+    (status || "")
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (normaliseStatus(status)) {
       case "delivered":
+      case "completed":
         return "#10B981"; // Emerald green
       case "in-progress":
-      case "pending":
+      case "inprogress":
       case "processing":
+      case "pending":
+      case "awaiting-confirmation":
         return "#3B82F6"; // Blue
       case "cancelled":
+      case "canceled":
         return "#EF4444"; // Red
       case "out-for-delivery":
+      case "delivering":
         return "#F59E0B"; // Amber
       default:
         return colors.lightText;
@@ -158,16 +176,21 @@ export default function OrdersScreen() {
   };
 
   const getStatusGradient = (status: string): [string, string] => {
-    switch (status) {
+    switch (normaliseStatus(status)) {
       case "delivered":
+      case "completed":
         return ["#10B981", "#059669"]; // Green gradient
       case "in-progress":
-      case "pending":
+      case "inprogress":
       case "processing":
+      case "pending":
+      case "awaiting-confirmation":
         return ["#3B82F6", "#2563EB"]; // Blue gradient
       case "cancelled":
+      case "canceled":
         return ["#EF4444", "#DC2626"]; // Red gradient
       case "out-for-delivery":
+      case "delivering":
         return ["#F59E0B", "#D97706"]; // Amber gradient
       default:
         return [colors.lightText, colors.lightText];
@@ -175,17 +198,22 @@ export default function OrdersScreen() {
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    switch (normaliseStatus(status)) {
       case "delivered":
+      case "completed":
         return "✅";
       case "in-progress":
+      case "inprogress":
       case "processing":
         return "⏳";
       case "pending":
+      case "awaiting-confirmation":
         return "🕐";
       case "cancelled":
+      case "canceled":
         return "❌";
       case "out-for-delivery":
+      case "delivering":
         return "🚚";
       default:
         return "📦";
@@ -290,85 +318,152 @@ export default function OrdersScreen() {
           <View style={styles.ordersList}>
             {[...orders]
               .sort((a, b) => {
-                // Sort by createdAt (or updatedAt if missing), descending (newest at top)
-                const aDate = new Date(a.createdAt || a.updatedAt || 0).getTime();
-                const bDate = new Date(b.createdAt || b.updatedAt || 0).getTime();
+                // Sort by orderDate (or createdAt/updatedAt if missing), descending (newest at top)
+                const aDate = new Date(a.orderDate || a.createdAt || a.updatedAt || 0).getTime();
+                const bDate = new Date(b.orderDate || b.createdAt || b.updatedAt || 0).getTime();
                 return bDate - aDate;
               })
               .map((order) => {
                 // Defensive: fallback for missing fields
                 // Adapted for new order format
                 // Use orderCode for Firebase tracking (matches delivery guy app)
-                const orderId = order.orderCode || order._id || order.id || "N/A";
-                // const orderVerificationCode = order.verification_code || "N/A";
-                // There is no "foodName" at the order level; show first foodName or fallback
+                const orderId =
+                  order.orderCode || order.orderId || order._id || order.id || "N/A";
+
+                const normalizedItems = Array.isArray(order.orderItems)
+                  ? order.orderItems.map((item: any) => ({
+                      name:
+                        item.name ||
+                        item.foodId?.foodName ||
+                        item.foodId?.name ||
+                        "Item",
+                      quantity: item.quantity || 1,
+                      price:
+                        typeof item.price === "object"
+                          ? parseFloat(
+                              item.price?.$numberDecimal ??
+                                item.price?.amount ??
+                                "0"
+                            )
+                          : Number(item.price ?? item.foodId?.price ?? 0),
+                    }))
+                  : Array.isArray(order.items)
+                  ? order.items.map((item: any) => ({
+                      name: item.foodName || item.name || "Item",
+                      quantity: item.quantity || 1,
+                      price: Number(item.price ?? 0),
+                    }))
+                  : [];
+
                 const orderName =
-                  order.orderItems && order.orderItems.length > 0
-                    ? order.orderItems.map((item: any) => item.name).join(", ")
-                    : "Order";
+                  normalizedItems.length > 0
+                    ? normalizedItems.map((item: any) => item.name).join(", ")
+                    : order.description || "Order";
+
+                const orderDate =
+                  order.orderDate || order.createdAt || order.updatedAt || "";
+
+                const rawStatus = order.orderStatus ?? order.status ?? "pending";
+                const statusKey =
+                  typeof rawStatus === "string"
+                    ? rawStatus.toLowerCase().replace(/\s+/g, "-")
+                    : "pending";
+                const statusLabel =
+                  typeof rawStatus === "string" && rawStatus.length > 0
+                    ? rawStatus
+                        .replace(/[-_]/g, " ")
+                        .replace(/\b\w/g, (char) => char.toUpperCase())
+                    : "Pending";
+
+                const totalItems = normalizedItems.reduce(
+                  (sum: number, item: any) => sum + (item.quantity || 1),
+                  0
+                );
+
+                const totalAmountSource =
+                  order.totalFoodPrice ??
+                  order.totalPrice ??
+                  order.total ??
+                  (order.transaction &&
+                  order.transaction.totalPrice &&
+                  order.transaction.totalPrice.$numberDecimal
+                    ? parseFloat(order.transaction.totalPrice.$numberDecimal)
+                    : undefined);
+
+                const totalAmount =
+                  typeof totalAmountSource === "number"
+                    ? totalAmountSource
+                    : Number(totalAmountSource ?? 0);
+
+                const orderCode = order.orderCode || orderId;
+                const orderVerificationCode =
+                  order.userVerificationCode ||
+                  order.verification_code ||
+                  "N/A";
+                const hasVerificationCode =
+                  typeof orderVerificationCode === "string" &&
+                  orderVerificationCode.trim().length > 0 &&
+                  orderVerificationCode !== "N/A";
+
+                const orderTypeRaw =
+                  order.orderType || order.deliveryVehicle || "delivery";
+                const orderTypeKey =
+                  typeof orderTypeRaw === "string"
+                    ? orderTypeRaw.toLowerCase()
+                    : "delivery";
+                const formattedOrderType =
+                  orderTypeKey.charAt(0).toUpperCase() + orderTypeKey.slice(1);
+
+                const deliveryMethodIcon = (() => {
+                  if (
+                    orderTypeKey.includes("bicycle") ||
+                    orderTypeKey.includes("bike")
+                  ) {
+                    return "🚲";
+                  }
+                  if (
+                    orderTypeKey.includes("motor") ||
+                    orderTypeKey.includes("scooter")
+                  ) {
+                    return "🛵";
+                  }
+                  if (
+                    orderTypeKey.includes("pickup") ||
+                    orderTypeKey.includes("takeaway")
+                  ) {
+                    return "🥡";
+                  }
+                  if (orderTypeKey.includes("dine")) {
+                    return "🍽️";
+                  }
+                  return "🚗";
+                })();
+
                 const restaurant =
-                  typeof order.restaurant_id === "object" && order.restaurant_id
-                    ? order.restaurant_id
-                    : {};
+                  (typeof order.restaurant_id === "object" && order.restaurant_id) ||
+                  (typeof order.restaurant === "object" && order.restaurant) ||
+                  {};
                 const restaurantName =
-                  order.restaurantId && order.restaurantId.name
-                    ? order.restaurantId?.name
-                    : "Unknown Restaurant";
+                  order.restaurantName ||
+                  order.restaurant?.name ||
+                  order.restaurantId?.name ||
+                  (order.phone ? `Customer ${order.phone}` : undefined) ||
+                  "Gebeta Delivery";
                 const restaurantImage =
                   restaurant.imageCover ||
                   restaurant.image ||
                   `https://placehold.co/48x48?text=${restaurantName?.charAt(0)}`;
-                // Use order.createdAt or fallback to updatedAt
-                const orderDate =
-                  order.createdAt || order.updatedAt || "";
-                // Use orderStatus (new format) or fallback
-                const status = order.orderStatus || order.status || "pending";
-                // Items: flatten orderItems to array of {foodId, quantity}
-                const items = Array.isArray(order.orderItems)
-                  ? order.orderItems
-                      .map((item: any) => ({
-                        foodId: item.foodId,
-                        quantity: item.quantity,
-                      }))
-                  : [];
-                
-                // Calculate total items and create grouped items display
-                const totalItems = items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
-                const groupedItems = items.reduce((acc: Record<string, number>, item: any) => {
-                  const foodName = item.foodId?.foodName || 'Unknown Item';
-                  if (acc[foodName]) {
-                    acc[foodName] += item.quantity || 1;
-                  } else {
-                    acc[foodName] = item.quantity || 1;
-                  }
-                  return acc;
-                }, {});
-                const orderVId = order.orderCode|| "N/A";
-                const orderVerificationCode = order.userVerificationCode || "N/A";
-                // Create items display text
-                const typesOfOrder =
-                  order.deliveryVehicle === "Car" ||
-                  order.deliveryVehicle === "Bicycle" ||
-                  order.deliveryVehicle === "Motor"
-                    ? "Delivery"
-                    : "Dine in or take away";
-                  
-                
-                // Total: prefer totalPrice, fallback to foodTotal
-                const totalAmount =
-                  order.transaction && order.transaction.totalPrice && order.transaction.totalPrice.$numberDecimal
-                    ? parseFloat(order.transaction.totalPrice.$numberDecimal)
-                    : 0;
-                // Delivery time: not present, fallback to orderDate
-                const deliveryTime = new Date(orderDate).toLocaleString();
-                // Delivery address: try restaurant.location.address or null
-                const deliveryAddress =
-                  restaurant.location && restaurant.location.address
-                    ? restaurant.location.address
-                    : null;
-                // Delivery method: extract from order data or set default
-                const deliveryMethod = order.deliveryVehicle || "delivery";
-                console.log('#########  deliveryMethod', order);
+
+                const deliveryTime = orderDate
+                  ? new Date(orderDate).toLocaleString()
+                  : "";
+
+                const itemsListText =
+                  normalizedItems.length > 0
+                    ? normalizedItems
+                        .map((item: any) => `${item.quantity}x ${item.name}`)
+                        .join(", ")
+                    : "No items found";
                 return (
                     <Animated.View
                       key={orderId}
@@ -388,7 +483,7 @@ export default function OrdersScreen() {
                       <View style={styles.cardTouchable}>
                         {/* Card Header with Gradient */}
                         <LinearGradient
-                          colors={getStatusGradient(status)}
+                          colors={getStatusGradient(statusKey)}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 0 }}
                           style={styles.cardHeader}
@@ -396,17 +491,17 @@ export default function OrdersScreen() {
                           <View style={styles.headerContent}>
                             <View style={styles.orderTitleSection}>
                               <View style={styles.statusIconContainer}>
-                                <Text style={styles.statusIcon}>{getStatusIcon(status)}</Text>
+                                <Text style={styles.statusIcon}>{getStatusIcon(statusKey)}</Text>
                               </View>
                               <View style={styles.orderMainInfo}>
                                 <Text style={styles.orderTitle}>{orderName}</Text>
-                                <Text style={styles.orderSubtitle}>Order ID: {orderVId}</Text>
+                                <Text style={styles.orderSubtitle}>Order Code: {orderCode}</Text>
                                 <Text style={styles.orderSubtitle}>Verification Code: #{orderVerificationCode}</Text>
                               </View>
                             </View>
                             <View style={styles.statusContainer}>
                               <Text style={styles.statusLabel}>
-                                {status.charAt(0).toUpperCase() + status.slice(1).replace(/-/g, " ")}
+                                {statusLabel}
                               </Text>
                               {/* <Text style={styles.orderDateHeader}>{formatDate(orderDate)}</Text> */}
                             </View>
@@ -427,7 +522,6 @@ export default function OrdersScreen() {
                             </View>
                             <View style={styles.restaurantDetails}>
 
-                              <Text style={styles.restaurantName}>{restaurantName}</Text>
 
 
                               <View style={styles.orderSummary}>
@@ -439,8 +533,42 @@ export default function OrdersScreen() {
                                 <Text style={styles.totalPrice}>ETB {Number(totalAmount).toFixed(2)}</Text>
                               </View>
                               <Text style={styles.itemsList} numberOfLines={2}>
-                               Order Type: {typesOfOrder} <Text style={{ fontSize: 20}}>{deliveryMethod === "Bicycle" ? "🚲" : deliveryMethod === "Motor" ? "🛵" : "🚗"}</Text>
-                               </Text>
+                                {itemsListText}
+                              </Text>
+                              <Text style={styles.itemsList}>
+                                Order Type: {formattedOrderType} {deliveryMethodIcon}
+                              </Text>
+                              
+                              {order.phone && (
+                                <Text style={styles.itemsList}>Phone: {order.phone}</Text>
+                              )}
+                              {order.description && (
+                                <Text style={styles.itemsList} numberOfLines={2}>
+                                  Note: {order.description}
+                                </Text>
+                              )}
+                              {hasVerificationCode && (
+                                <TouchableOpacity
+                                  style={styles.qrButton}
+                                  activeOpacity={0.9}
+                                  onPress={() =>
+                                    setQrModalData({
+                                      orderCode,
+                                      verificationCode: orderVerificationCode,
+                                    })
+                                  }
+                                >
+                                  <LinearGradient
+                                    colors={["#3B82F6", "#2563EB"]}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.qrButtonGradient}
+                                  >
+                                    <Text style={styles.qrButtonIcon}><ScanQrCodeIcon size={18} color="#FFFFFF" /></Text>
+                                    <Text style={styles.qrButtonText}>Show QR Code</Text>
+                                  </LinearGradient>
+                                </TouchableOpacity>
+                              )}
                             </View>
                           </View>
 
@@ -485,7 +613,7 @@ export default function OrdersScreen() {
                           </View>
 
                           {/* Track Delivery Button */}
-                          {status === "Delivering" && (
+                          {["delivering", "out-for-delivery"].includes(statusKey) && (
                             <View style={styles.actionContainer}>
                               <TouchableOpacity
                                 style={styles.trackButton}
@@ -576,6 +704,50 @@ export default function OrdersScreen() {
                 <TrackingMap 
                   orderId={fullScreenOrderId || ""}
                 />
+              </View>
+            </View>
+          </Modal>
+        )}
+
+        {qrModalData && (
+          <Modal
+            visible={true}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setQrModalData(null)}
+          >
+            <View style={styles.qrModalOverlay}>
+              <View style={styles.qrModalCard}>
+                <Text style={styles.qrModalTitle}>Scan Verification Code</Text>
+                <Text style={styles.qrModalSubtitle}>
+                  Order {qrModalData.orderCode}
+                </Text>
+                <Image
+                  source={{
+                    uri: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+                      qrModalData.verificationCode
+                    )}`,
+                  }}
+                  style={styles.qrImage}
+                  contentFit="contain"
+                />
+                <Text style={styles.qrCodeValueText}>
+                  {qrModalData.verificationCode}
+                </Text>
+                <TouchableOpacity
+                  style={styles.qrCloseButton}
+                  activeOpacity={0.85}
+                  onPress={() => setQrModalData(null)}
+                >
+                  <LinearGradient
+                    colors={["#EF4444", "#DC2626"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.qrCloseButtonGradient}
+                  >
+                    <Text style={styles.qrCloseButtonText}>Close</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               </View>
             </View>
           </Modal>
@@ -807,6 +979,33 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 18,
   },
+  qrButton: {
+    marginTop: 12,
+    borderRadius: 10,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    
+  },
+  qrButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  qrButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  qrButtonIcon: {
+    fontSize: 16,
+  },
   orderDetailsContainer: {
     marginTop: 1,
     
@@ -898,6 +1097,69 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     flex: 1,
+  },
+  qrModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  qrModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  qrModalTitle: {
+    ...typography.heading3,
+    color: colors.black,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  qrModalSubtitle: {
+    ...typography.body,
+    color: '#4B5563',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  qrImage: {
+    width: 220,
+    height: 220,
+    borderRadius: 16,
+    backgroundColor: '#F9FAFB',
+    marginVertical: 12,
+  },
+  qrCodeValueText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginTop: 12,
+    letterSpacing: 1,
+  },
+  qrCloseButton: {
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 24,
+  },
+  qrCloseButtonGradient: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrCloseButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.white,
   },
   inlineMapContainer: {
     marginTop: 16,

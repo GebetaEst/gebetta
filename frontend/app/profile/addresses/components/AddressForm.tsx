@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,6 +7,7 @@ import colors from '@/constants/colors';
 import { useState } from 'react';
 import * as Location from 'expo-location';
 import { useAuthStore } from '@/store/useAuthStore';
+import { MaterialIcons } from '@expo/vector-icons';
 
 // Define the form data type
 interface AddressFormData {
@@ -60,7 +61,7 @@ interface ExtendedAddressFormProps extends AddressFormProps {
   isGettingLocation?: boolean;
 }
 
-export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps) {
+export function AddressForm({ onSubmit: _onSubmit, initialData }: ExtendedAddressFormProps) {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const baseUrl = process.env.EXPO_PUBLIC_BASE_URL || 'https://gebeta-delivery1.onrender.com'; // Use env variable or fallback
   const { user } = useAuthStore();
@@ -72,7 +73,7 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
     isDefault: z.boolean(),
   });
 
-  const { control, handleSubmit, formState: { errors }, watch } = useForm<AddressFormData>({
+  const { control, formState: { errors }, watch } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
     defaultValues: initialData || {
       name: '',
@@ -84,10 +85,6 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
   });
 
   const selectedLabel = watch('label');
-
-  const handleSave = handleSubmit((data) => {
-    onSubmit(data);
-  });
 
   const getAndSendLocation = async () => {
     setIsGettingLocation(true);
@@ -143,13 +140,23 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={styles.title}>Add New Address</Text>
-        <Text style={styles.subtitle}>Fill in your address details</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerIconWrapper}>
+            <MaterialIcons name="location-on" size={28} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={styles.title}>Add New Address</Text>
+            <Text style={styles.subtitle}>Fill in your address details</Text>
+          </View>
+        </View>
       </View>
 
       {/* Name Input */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Address Name *</Text>
+        <View style={styles.labelRow}>
+          <MaterialIcons name="drive-file-rename-outline" size={18} color={colors.primary} style={styles.labelIcon} />
+          <Text style={styles.label}>Address Name *</Text>
+        </View>
         <Controller
           control={control}
           name="name"
@@ -168,7 +175,10 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
 
       {/* Label Picker */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Address Type *</Text>
+        <View style={styles.labelRow}>
+          <MaterialIcons name="category" size={18} color={colors.primary} style={styles.labelIcon} />
+          <Text style={styles.label}>Address Type *</Text>
+        </View>
         <Controller
           control={control}
           name="label"
@@ -179,40 +189,23 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
                 onValueChange={onChange}
                 style={styles.picker}
               >
-                <Picker.Item label="🏠 Home" value="Home" />
-                <Picker.Item label="💼 Work" value="Work" />
-                <Picker.Item label="📍 Other" value="Other" />
+                <Picker.Item label="Home" value="Home" />
+                <Picker.Item label="Work" value="Work" />
+                <Picker.Item label="Other" value="Other" />
               </Picker>
             </View>
           )}
         />
         {errors.label && <Text style={styles.errorText}>{errors.label.message}</Text>}
       </View>
-
-      {/* Custom Label (conditional) */}
-      {selectedLabel === 'Other' && (
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Custom Label</Text>
-          <Controller
-            control={control}
-            name="customLabel"
-            render={({ field: { onChange, value } }) => (
-              <TextInput
-                style={[styles.input, errors.customLabel && styles.inputError]}
-                placeholder="e.g., Church, Gym, School"
-                placeholderTextColor="#999"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-          {errors.customLabel && <Text style={styles.errorText}>{errors.customLabel.message}</Text>}
-        </View>
-      )}
+      
 
       {/* Additional Info */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Additional Information *</Text>
+        <View style={styles.labelRow}>
+          <MaterialIcons name="notes" size={18} color={colors.primary} style={styles.labelIcon} />
+          <Text style={styles.label}>Additional Information *</Text>
+        </View>
         <Controller
           control={control}
           name="additionalInfo"
@@ -232,24 +225,6 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
         {errors.additionalInfo && <Text style={styles.errorText}>{errors.additionalInfo.message}</Text>}
       </View>
 
-      {/* Set as Default Checkbox */}
-      <Controller
-        control={control}
-        name="isDefault"
-        render={({ field: { onChange, value } }) => (
-          <TouchableOpacity
-            onPress={() => onChange(!value)}
-            style={styles.checkboxContainer}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.checkbox, value && styles.checkboxChecked]}>
-              {value && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={styles.checkboxLabel}>Set as Default Address</Text>
-          </TouchableOpacity>
-        )}
-      />
-
       {/* Save Button */}
       <TouchableOpacity
         style={[styles.button, isGettingLocation && styles.disabledButton]}
@@ -257,9 +232,19 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
         disabled={isGettingLocation}
         activeOpacity={0.8}
       >
-        <Text style={styles.buttonText}>
-          {isGettingLocation ? '📍 Getting Location...' : '📍 Save Current Location'}
-        </Text>
+        <View style={styles.buttonContent}>
+          {isGettingLocation ? (
+            <>
+              <ActivityIndicator size="small" color="#fff" style={styles.buttonLoader} />
+              <Text style={styles.buttonText}>Getting Location...</Text>
+            </>
+          ) : (
+            <>
+              <MaterialIcons name="my-location" size={20} color="#fff" style={styles.buttonIcon} />
+              <Text style={styles.buttonText}>Save Current Location</Text>
+            </>
+          )}
+        </View>
       </TouchableOpacity>
 
       <View style={styles.bottomSpacer} />
@@ -274,22 +259,36 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 28,
     paddingBottom: 10,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EEF5FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 5,
+    marginTop: 28,
   },
   subtitle: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 10,
+    // marginBottom: 10,
   },
   inputGroup: {
     backgroundColor: 'white',
@@ -302,6 +301,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  labelIcon: {
+    marginRight: 8,
   },
   input: {
     borderWidth: 1,
@@ -342,39 +349,6 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
   },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    marginTop: 10,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    backgroundColor: 'white',
-  },
-  checkboxChecked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  checkmark: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  checkboxLabel: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
   button: {
     backgroundColor: colors.primary,
     marginHorizontal: 20,
@@ -391,6 +365,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  buttonLoader: {
+    marginRight: 12,
   },
   disabledButton: {
     backgroundColor: '#999',
