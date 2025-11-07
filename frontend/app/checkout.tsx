@@ -89,6 +89,29 @@ export default function CheckoutScreen() {
     return address.coordinates || null;
   };
 
+  // Helper function to get formatted address display text
+  const getAddressDisplayText = (address: Address) => {
+    const parts = [];
+    
+    // Add the name/title
+    if (address.Name) {
+      parts.push(address.Name);
+    }
+    
+    // Add additional info if available
+    if (address.additionalInfo) {
+      parts.push(address.additionalInfo);
+    }
+    
+    // Add coordinates if available
+    if (address.coordinates?.lat && address.coordinates?.lng) {
+      parts.push(`(${address.coordinates.lat.toFixed(4)}, ${address.coordinates.lng.toFixed(4)})`);
+    }
+    
+    // Return combined text or fallback
+    return parts.length > 0 ? parts.join(', ') : 'Address';
+  };
+
   // Function to fetch addresses from API
   const fetchAddresses = async () => {
     if (!user?.token) return;
@@ -303,24 +326,38 @@ export default function CheckoutScreen() {
       return;
     }
 
-    // Find the selected address from the addresses array
-    const address = addresses.find(addr => getAddressId(addr) === selectedAddress);
-    
-    // Determine destination: use address coordinates if available, otherwise use currentLocation
     let destinationCoords = null;
     
-    if (address && address.coordinates && address.coordinates.lat && address.coordinates.lng) {
-      // Use address coordinates
-      destinationCoords = {
-        lat: address.coordinates.lat,
-        lng: address.coordinates.lng
-      };
-    } else if (currentLocation) {
-      // Fallback to current location
+    // Priority 1: If user chose to use address list and selected an address
+    if (locationRefused && selectedAddress) {
+      const address = addresses.find(addr => getAddressId(addr) === selectedAddress);
+      
+      if (address && address.coordinates && address.coordinates.lat && address.coordinates.lng) {
+        // Use the selected address coordinates
+        destinationCoords = {
+          lat: address.coordinates.lat,
+          lng: address.coordinates.lng
+        };
+        console.log("Using selected address coordinates:", destinationCoords);
+      }
+    }
+    
+    // Priority 2: If user chose to use current location (locationRefused is false)
+    if (!destinationCoords && !locationRefused && currentLocation) {
       destinationCoords = {
         lat: currentLocation.latitude,
         lng: currentLocation.longitude
       };
+      console.log("Using current location:", destinationCoords);
+    }
+    
+    // Priority 3: Fallback to current location if address doesn't have coordinates
+    if (!destinationCoords && currentLocation) {
+      destinationCoords = {
+        lat: currentLocation.latitude,
+        lng: currentLocation.longitude
+      };
+      console.log("Fallback to current location:", destinationCoords);
     }
     
     // If no destination is available, return early
@@ -376,7 +413,7 @@ export default function CheckoutScreen() {
   const handlePlaceOrder = async () => {
     setIsProcessing(true);
     let result: any = null;
-
+  
     try {
       // Validate required fields
       if (serviceType === "delivery" && locationRefused) {
@@ -384,27 +421,27 @@ export default function CheckoutScreen() {
         setIsProcessing(false);
         return;
       }
-
+  
       if (serviceType === "dine-in" && !tableNumber) {
         Alert.alert("Error", "Please enter your table number");
         setIsProcessing(false);
         return;
       }
-
+  
       if (serviceType === "pickup" && !pickupTime) {
         Alert.alert("Error", "Please select a pickup time");
         setIsProcessing(false);
         return;
       }
-
+  
       // Get current phone location for all order types
       let phoneLocation = currentLocation;
-
+  
       // Only try to get location if we don't have it and user hasn't refused
       if (!phoneLocation && !locationRefused) {
         console.log("Getting current location for order...");
         phoneLocation = await getCurrentLocation();
-
+  
         if (!phoneLocation) {
           // User refused location or location failed
           if (serviceType === "delivery") {
@@ -422,75 +459,84 @@ export default function CheckoutScreen() {
           return;
         }
       }
-
+  
       const selectedAddressData = addresses.find(
         (addr) => getAddressId(addr) === selectedAddress
       );
-
-      // Get destination coordinates for delivery
+  
+      // Get destination coordinates and address for delivery
       let destinationLocation = null;
+      let deliveryAddress = "";
+  
       if (serviceType === "delivery") {
         if (selectedAddressData) {
-          // Use selected address coordinates
+          // Use selected address
           const addressCoords = getAddressCoordinates(selectedAddressData);
+          deliveryAddress = getAddressDisplayText(selectedAddressData); // You'll need this function
+          
           if (addressCoords) {
             destinationLocation = {
-              lat: addressCoords.lat,
-              lng: addressCoords.lng
+              latitude: addressCoords.lat,
+              longitude: addressCoords.lng,
+              address: deliveryAddress
             };
           } else {
             // Fallback to phone location if address doesn't have coordinates
             destinationLocation = phoneLocation ? {
-              lat: phoneLocation.latitude,
-              lng: phoneLocation.longitude,
+              latitude: phoneLocation.latitude,
+              longitude: phoneLocation.longitude,
+              address: deliveryAddress || "Current Location"
             } : {
-              lat: 9.033872,
-              lng: 38.750659,
+              latitude: 9.033872,
+              longitude: 38.750659,
+              address: "Default Location"
             };
           }
         } else {
           // Use phone location as destination when no address is selected
+          deliveryAddress = "Current Location";
           destinationLocation = phoneLocation ? {
-            lat: phoneLocation.latitude,
-            lng: phoneLocation.longitude,
+            latitude: phoneLocation.latitude,
+            longitude: phoneLocation.longitude,
+            address: deliveryAddress
           } : {
-            lat: 9.033872,
-            lng: 38.750659,
+            latitude: 9.033872,
+            longitude: 38.750659,
+            address: "Default Location"
           };
         }
       }
-
-      const orderPayload = {
+  
+      // Base payload structure
+      const orderPayload: any = {
         restaurantId: restaurantId,
-        orderItems: cartItems.map((item) => ({
+        items: cartItems.map((item) => ({
           foodId: item.menuItemId,
           quantity: item.quantity,
         })),
-        typeOfOrder:
-          serviceType.toLowerCase() === "delivery"
-            ? "Delivery"
-            : serviceType.toLowerCase() === "pickup"
-              ? "Pickup"
-              : "Dine-in",
-        // Include exact phone location if available
-        ...(phoneLocation && {
-          phoneLocation: {
-            lat: phoneLocation.latitude,
-            lng: phoneLocation.longitude,
-          },
-        }),
-        ...(serviceType === "delivery" && {
-          vehicleType: vehicleType,
-          destinationLocation: destinationLocation,
-        }),
         tip: tip,
-        ...(serviceType === "dine-in" && { tableNumber }),
-        ...(serviceType === "pickup" && { pickupTime }),
         description: orderDescription,
       };
+  
+      // Add service type specific fields
+      if (serviceType === "delivery") {
+        orderPayload.destinationLocation = destinationLocation;
+        orderPayload.deliveryVehicle = vehicleType;
+      } else if (serviceType === "pickup") {
+        orderPayload.pickupTime = pickupTime;
+      } else if (serviceType === "dine-in") {
+        orderPayload.tableNumber = tableNumber;
+      }
 
+      // Add console logging to debug payload
+      console.log("Order Payload being sent:", JSON.stringify(orderPayload, null, 2));
 
-
+      // Validate destinationLocation for delivery orders
+      if (serviceType === "delivery" && !orderPayload.destinationLocation) {
+        Alert.alert("Error", "Delivery location is required");
+        setIsProcessing(false);
+        return;
+      }
 
       const response = await fetch(
         "https://gebeta-delivery1.onrender.com/api/v1/orders/place-order",
@@ -498,21 +544,18 @@ export default function CheckoutScreen() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization:
-              `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(orderPayload),
         }
       );
-
-      // console.log("====", orderPayload)
+  
       if (response.ok) {
         result = await response.json();
-        // console.log("Order result:", result);
-
+        
         // Clear cart after successful order
         clearCart();
-
+  
         // If a payment checkout_url is available, show WebView
         if (
           typeof result === "object" &&
@@ -523,7 +566,7 @@ export default function CheckoutScreen() {
           setShowWebView(true);
           return; // Don't show success alert yet, wait for payment
         }
-
+  
         Alert.alert("Success", "Order placed successfully!", [
           {
             text: "OK",
@@ -536,6 +579,8 @@ export default function CheckoutScreen() {
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error("Order failed:", errorData);
+        console.error("Response status:", response.status);
+        console.error("Payload sent:", JSON.stringify(orderPayload, null, 2));
         Alert.alert("Error", errorData.message || "Failed to place order");
       }
     } catch (error) {

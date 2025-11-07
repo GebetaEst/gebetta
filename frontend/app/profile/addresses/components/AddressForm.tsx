@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, Alert, ScrollView } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,8 +10,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 // Define the form data type
 interface AddressFormData {
+  name: string;
   additionalInfo: string;
-  label: 'home' | 'work' | 'other';
+  label: 'Home' | 'Work' | 'Other';
   customLabel?: string;
   isDefault: boolean;
 }
@@ -64,8 +65,9 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
   const baseUrl = process.env.EXPO_PUBLIC_BASE_URL || 'https://gebeta-delivery1.onrender.com'; // Use env variable or fallback
   const { user } = useAuthStore();
   const addressSchema = z.object({
-    additionalInfo: z.string().min(1, 'Additional info is required'),
-    label: z.enum(['home', 'work', 'other'], { message: 'Please select a valid label' }),
+    name: z.string().min(3, 'Name must be at least 3 characters'),
+    additionalInfo: z.string().min(5, 'Additional info must be at least 5 characters'),
+    label: z.enum(['Home', 'Work', 'Other'], { message: 'Please select a valid label' }),
     customLabel: z.string().optional(),
     isDefault: z.boolean(),
   });
@@ -73,8 +75,9 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
   const { control, handleSubmit, formState: { errors }, watch } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
     defaultValues: initialData || {
+      name: '',
       additionalInfo: '',
-      label: 'home',
+      label: 'Home',
       customLabel: '',
       isDefault: false,
     },
@@ -99,12 +102,14 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
       // Get current position
       let location = await Location.getCurrentPositionAsync({});
       const payload = {
-        name: selectedLabel === 'other' ? watch('customLabel') || 'Current Location' : selectedLabel,
-        label: selectedLabel === 'other' ? watch('customLabel') || 'Current Location' : selectedLabel,
+        name: watch('name'),
+        label: selectedLabel === 'Other' ? watch('customLabel') || selectedLabel.substring(0, 1).toUpperCase() + selectedLabel.slice(1) : selectedLabel,
         additionalInfo: watch('additionalInfo'),
-        lat: location.coords.latitude,
-        lng: location.coords.longitude,
-        isDefault: watch('isDefault'),
+        // isDefault: watch('isDefault'),
+        location: {
+          lat: location.coords.latitude,
+          lng: location.coords.longitude,
+        },
       };
 
       // Send to API
@@ -114,9 +119,12 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
           'Content-Type': 'application/json',
           Authorization: `Bearer ${user?.token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify( payload),
       });
+      console.log("77777777777777777",  payload);
 
+
+      console.log("77777777777777777",  selectedLabel);
       if (response.ok) {
         Alert.alert('Success', 'Location saved successfully!');
         // onSubmit(payload); // Call onSubmit with the payload for consistency
@@ -133,150 +141,271 @@ export function AddressForm({ onSubmit, initialData }: ExtendedAddressFormProps)
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Add Address</Text>
-      <Controller
-        control={control}
-        name="additionalInfo"
-        render={({ field: { onChange, value } }) => (
-          <TextInput
-            style={styles.input}
-            placeholder="Additional Info (e.g., Apartment 402, near Edna Mall)"
-            value={value}
-            onChangeText={onChange}
-          />
-        )}
-      />
-      {errors.additionalInfo && <Text style={styles.errorText}>{errors.additionalInfo.message}</Text>}
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Add New Address</Text>
+        <Text style={styles.subtitle}>Fill in your address details</Text>
+      </View>
 
-      <Controller
-        control={control}
-        name="label"
-        render={({ field: { onChange, value } }) => (
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={value}
-              onValueChange={onChange}
-              style={styles.picker}
-            >
-              <Picker.Item label="Home" value="home" />
-              <Picker.Item label="Work" value="work" />
-              <Picker.Item label="Other" value="other" />
-            </Picker>
-          </View>
-        )}
-      />
-      {errors.label && <Text style={styles.errorText}>{errors.label.message}</Text>}
-
-      {selectedLabel === 'other' && (
+      {/* Name Input */}
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Address Name *</Text>
         <Controller
           control={control}
-          name="customLabel"
+          name="name"
           render={({ field: { onChange, value } }) => (
             <TextInput
-              style={styles.input}
-              placeholder="Custom Label (e.g., Church, Gym, School)"
+              style={[styles.input, errors.name && styles.inputError]}
+              placeholder="e.g., Work Office, My Home"
+              placeholderTextColor="#999"
               value={value}
               onChangeText={onChange}
             />
           )}
         />
-      )}
-      {errors.customLabel && <Text style={styles.errorText}>{errors.customLabel.message}</Text>}
+        {errors.name && <Text style={styles.errorText}>{errors.name.message}</Text>}
+      </View>
 
+      {/* Label Picker */}
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Address Type *</Text>
+        <Controller
+          control={control}
+          name="label"
+          render={({ field: { onChange, value } }) => (
+            <View style={[styles.pickerWrapper, errors.label && styles.inputError]}>
+              <Picker
+                selectedValue={value}
+                onValueChange={onChange}
+                style={styles.picker}
+              >
+                <Picker.Item label="🏠 Home" value="Home" />
+                <Picker.Item label="💼 Work" value="Work" />
+                <Picker.Item label="📍 Other" value="Other" />
+              </Picker>
+            </View>
+          )}
+        />
+        {errors.label && <Text style={styles.errorText}>{errors.label.message}</Text>}
+      </View>
+
+      {/* Custom Label (conditional) */}
+      {selectedLabel === 'Other' && (
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Custom Label</Text>
+          <Controller
+            control={control}
+            name="customLabel"
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                style={[styles.input, errors.customLabel && styles.inputError]}
+                placeholder="e.g., Church, Gym, School"
+                placeholderTextColor="#999"
+                value={value}
+                onChangeText={onChange}
+              />
+            )}
+          />
+          {errors.customLabel && <Text style={styles.errorText}>{errors.customLabel.message}</Text>}
+        </View>
+      )}
+
+      {/* Additional Info */}
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Additional Information *</Text>
+        <Controller
+          control={control}
+          name="additionalInfo"
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={[styles.textArea, errors.additionalInfo && styles.inputError]}
+              placeholder="e.g., Apartment 402, near Edna Mall, Downtown Addis Ababa"
+              placeholderTextColor="#999"
+              value={value}
+              onChangeText={onChange}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          )}
+        />
+        {errors.additionalInfo && <Text style={styles.errorText}>{errors.additionalInfo.message}</Text>}
+      </View>
+
+      {/* Set as Default Checkbox */}
       <Controller
         control={control}
         name="isDefault"
         render={({ field: { onChange, value } }) => (
-          <View style={styles.checkboxContainer}>
-            <TouchableOpacity
-              onPress={() => onChange(!value)}
-              style={styles.checkbox}
-            >
-              <Text>{value ? '☑' : '☐'} Set as Default</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={() => onChange(!value)}
+            style={styles.checkboxContainer}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.checkbox, value && styles.checkboxChecked]}>
+              {value && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.checkboxLabel}>Set as Default Address</Text>
+          </TouchableOpacity>
         )}
       />
+
+      {/* Save Button */}
       <TouchableOpacity
         style={[styles.button, isGettingLocation && styles.disabledButton]}
         onPress={getAndSendLocation}
         disabled={isGettingLocation}
+        activeOpacity={0.8}
       >
         <Text style={styles.buttonText}>
-          {isGettingLocation ? 'Getting Location...' : 'Save Current Location'}
+          {isGettingLocation ? '📍 Getting Location...' : '📍 Save Current Location'}
         </Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.button, isGettingLocation && styles.disabledButton]}
-        onPress={handleSave}
-        disabled={isGettingLocation}
-      >
-        <Text style={styles.buttonText}>Save Address</Text>
-      </TouchableOpacity>
-    </View>
+
+      <View style={styles.bottomSpacer} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
+    color: '#333',
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  inputGroup: {
+    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginTop: 10,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 15,
-    marginBottom: 15,
     fontSize: 16,
+    backgroundColor: '#fafafa',
+    color: '#333',
+  },
+  inputError: {
+    borderColor: '#ff4444',
+    borderWidth: 1.5,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 16,
+    backgroundColor: '#fafafa',
+    color: '#333',
+    minHeight: 100,
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 13,
+    marginTop: 5,
+    fontWeight: '500',
+  },
+  pickerWrapper: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    backgroundColor: '#fafafa',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    marginTop: 10,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    backgroundColor: 'white',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkmark: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
   },
   button: {
     backgroundColor: colors.primary,
-    padding: 15,
-    borderRadius: 8,
+    marginHorizontal: 20,
+    marginTop: 30,
+    padding: 18,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   disabledButton: {
     backgroundColor: '#999',
     opacity: 0.6,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 17,
+    letterSpacing: 0.5,
   },
-  picker: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-    fontSize: 16,
-  },
-  pickerContainer: {
-    marginVertical: 10,
-  },
-  pickerLabel: {
-    textAlign: 'left',
-    padding: 15,
-    borderRadius: 8,
-  },
-  errorText: {
-    color: 'red',
-    fontSize: 14,
-    marginBottom: 10,
-  },
-  checkboxContainer: {
-    marginVertical: 10,
-  },
-  checkbox: {
-    padding: 10,
+  bottomSpacer: {
+    height: 40,
   },
 });
 

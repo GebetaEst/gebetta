@@ -289,9 +289,9 @@ export const useCartStore = create<CartState>()(
       getCartTotal: () => {
         const subtotal = get().getCartSubtotal();
         const deliveryFee = get().getDeliveryFee();
-        const tax = get().getTax();
+        // Tax removed - no longer adding 15% to total
         
-        return subtotal + deliveryFee + tax;
+        return subtotal + deliveryFee;
       },
       
       createOrder: (paymentMethod, addressId, tip, tableNumber, pickupTime) => {
@@ -299,7 +299,6 @@ export const useCartStore = create<CartState>()(
           getCartItems, 
           getCartSubtotal, 
           getDeliveryFee, 
-          getTax, 
           getCartTotal, 
           clearCart,
           serviceType 
@@ -308,7 +307,7 @@ export const useCartStore = create<CartState>()(
         const cartItems = getCartItems();
         const subtotal = getCartSubtotal();
         const deliveryFee = getDeliveryFee();
-        const tax = getTax();
+        const tax = 0; // Tax removed - no longer charging 15%
         const total = getCartTotal() + tip;
         
         let deliveryAddress: any = "Pickup";
