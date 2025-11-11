@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import colors from "@/constants/colors";
 import typography from "@/constants/typography";
 import { Food } from "@/types/food";
+import { normalizeRestaurantId } from "@/utils/restaurant";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - 40;
@@ -26,7 +27,9 @@ export default function FoodCard({ food }: FoodCardProps) {
 
   const handlePress = () => {
     // Navigate to food detail page
-    const restaurantId = food.restaurantId || food.menuId?.restaurantId;
+    const restaurantId =
+      normalizeRestaurantId(food.restaurantId) ??
+      normalizeRestaurantId(food.menuId?.restaurantId);
     const foodId = food._id || food.id;
     if (restaurantId && foodId) {
       router.push(`/menu-item/${restaurantId}/${foodId}`);

@@ -2,6 +2,7 @@ import { addresses } from "@/mocks/addresses";
 import { mockRestaurants } from "@/mocks/restaurants";
 import { currentUser } from "@/mocks/users";
 import { CartItem, MenuItem, Order, ServiceType } from "@/types/restaurant";
+import { normalizeRestaurantId, RestaurantIdLike } from "@/utils/restaurant";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -12,7 +13,13 @@ interface CartState {
   serviceType: ServiceType;
   
   // Cart actions
-  addToCart: (restaurantId: string, menuItemId: string, quantity: number, specialInstructions?: string, metadata?: { name?: string; price?: number }) => void;
+  addToCart: (
+    restaurantId: RestaurantIdLike,
+    menuItemId: string,
+    quantity: number,
+    specialInstructions?: string,
+    metadata?: { name?: string; price?: number; restaurantId?: RestaurantIdLike }
+  ) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   updateInstructions: (itemId: string, instructions: string) => void;
   removeFromCart: (itemId: string) => void;
@@ -48,43 +55,63 @@ export const useCartStore = create<CartState>()(
       serviceType: 'delivery',
       orders: [],
       
-      addToCart: (restaurantId, menuItemId, quantity, specialInstructions, metadata) => {
+      addToCart: (rawRestaurantId, menuItemId, quantity, specialInstructions, metadata) => {
         const { items, restaurantId: currentRestaurantId } = get();
-        
-        // If adding from a different restaurant, clear the cart first
-        if (currentRestaurantId && currentRestaurantId !== restaurantId) {
-          if (items.length > 0) {
-            // In a real app, you would show a confirmation dialog here
-            set({ items: [], restaurantId: null });
-          }
+
+        const normalizedRestaurantId =
+          normalizeRestaurantId(rawRestaurantId) ??
+          normalizeRestaurantId(metadata?.restaurantId) ??
+          normalizeRestaurantId(currentRestaurantId) ??
+          normalizeRestaurantId(items[0]?.restaurantId);
+
+        if (!normalizedRestaurantId) {
+          console.warn("Attempted to add to cart without a valid restaurant id", {
+            rawRestaurantId,
+            metadata,
+          });
+          return;
         }
-        
-        const existingItemIndex = items.findIndex(item => item.id === menuItemId || item.menuItemId === menuItemId);
-        
+
+        const normalizedCurrentRestaurantId = normalizeRestaurantId(currentRestaurantId);
+        let workingItems = items;
+
+        if (
+          normalizedCurrentRestaurantId &&
+          normalizedCurrentRestaurantId !== normalizedRestaurantId &&
+          items.length > 0
+        ) {
+          workingItems = [];
+          set({ items: [], restaurantId: null });
+        }
+
+        const existingItemIndex = workingItems.findIndex(
+          (item) => item.id === menuItemId || item.menuItemId === menuItemId
+        );
+
         if (existingItemIndex >= 0) {
           // Update existing item
-          const updatedItems = [...items];
+          const updatedItems = [...workingItems];
           updatedItems[existingItemIndex].quantity += quantity;
           if (specialInstructions) {
             updatedItems[existingItemIndex].specialInstructions = specialInstructions;
           }
-          set({ items: updatedItems, restaurantId });
+          set({ items: updatedItems, restaurantId: normalizedRestaurantId });
         } else {
           // Add new item
           set({
             items: [
-              ...items,
+              ...workingItems,
               {
                 id: menuItemId,
                 menuItemId: menuItemId,
-                restaurantId,
+                restaurantId: normalizedRestaurantId,
                 quantity,
                 specialInstructions,
                 name: metadata?.name || "", // Use metadata if provided
                 price: metadata?.price || 0, // Use metadata if provided
               },
             ],
-            restaurantId,
+            restaurantId: normalizedRestaurantId,
           });
         }
       },
@@ -337,16 +364,15 @@ export const useCartStore = create<CartState>()(
           deliveryAddress = "Dine-in";
         }
         
-        const restaurant = mockRestaurants.find(r => r.id === get().restaurantId);
-        
-        if (!restaurant) {
-          throw new Error("Restaurant not found");
-        }
+        const normalizedRestaurantId = normalizeRestaurantId(get().restaurantId);
+        const restaurant = normalizedRestaurantId
+          ? mockRestaurants.find(r => r.id === normalizedRestaurantId)
+          : undefined;
         
         const newOrder: Order = {
           id: Date.now().toString(),
           userId: currentUser?.id,
-          restaurantId: restaurant.id,
+          restaurantId: restaurant?.id ?? normalizedRestaurantId ?? "",
           items: cartItems.map(item => ({
             id: Date.now() + "-" + item.menuItem.id,
             menuItemId: item.menuItem.id,
@@ -366,7 +392,10 @@ export const useCartStore = create<CartState>()(
           tableNumber,
           pickupTime,
           createdAt: new Date().toISOString(),
-          estimatedDeliveryTime: serviceType === 'delivery' ? restaurant.estimatedDeliveryTime : 0,
+          estimatedDeliveryTime:
+            serviceType === 'delivery'
+              ? restaurant?.estimatedDeliveryTime ?? 0
+              : 0,
           totalAmount: 0,
           paymentStatus: "pending",
           updatedAt: ""

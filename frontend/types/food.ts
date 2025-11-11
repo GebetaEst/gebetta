@@ -10,13 +10,19 @@ export interface Food {
   isFeatured?: boolean;
   menuId: {
     _id: string;
-    restaurantId: string;
+    restaurantId:
+      | string
+      | {
+          _id?: string;
+          id?: string;
+          restaurantId?: string;
+        };
     menuType: string;
     active: boolean;
     createdAt: string;
     updatedAt: string;
   };
-  restaurantId?: string;
+  restaurantId?: string | { _id?: string; id?: string };
   status: string;
   createdAt: string;
   updatedAt: string;

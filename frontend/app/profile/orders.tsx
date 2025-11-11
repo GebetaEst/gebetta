@@ -547,7 +547,7 @@ export default function OrdersScreen() {
                                   Note: {order.description}
                                 </Text>
                               )}
-                              {hasVerificationCode && (
+                              {hasVerificationCode && statusKey === "delivering" && (
                                 <TouchableOpacity
                                   style={styles.qrButton}
                                   activeOpacity={0.9}

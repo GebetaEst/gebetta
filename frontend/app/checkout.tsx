@@ -27,6 +27,7 @@ import {
 } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
+import responsive from "@/utils/responsive";
 
 const { width } = Dimensions.get("window");
 const isTablet = width > 768;
@@ -66,6 +67,7 @@ export default function CheckoutScreen() {
     setServiceType,
     clearCart,
   } = useCartStore();
+  console.log("rrrrrrrrrrrrr" , restaurantId)
   const { user } = useAuthStore();
 
   const scrollViewRef = useRef<ScrollView | null>(null);
@@ -192,11 +194,12 @@ const getAddressCoordinates = (
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Addresses fetched:", data);
+        // console.log("&&&&&&&&&&&&&&&&&&&&", data);
 
         // Assuming the API returns addresses in data.addresses or directly in data
         const addressList = data.addresses || data.data || data || [];
         setAddresses(addressList);
+
       } else {
         console.error("Failed to fetch addresses:", response.status);
         Alert.alert("Error", "Failed to load addresses");
@@ -419,6 +422,7 @@ const getAddressCoordinates = (
       };
       console.log("Fallback to current location:", destinationCoords);
     }
+    console.log(responsive)
     
     // If no destination is available, return early
     if (!destinationCoords) {
@@ -442,6 +446,9 @@ const getAddressCoordinates = (
         body: JSON.stringify(deliveryPayload),
       });
       const deliveryData = await deliveryResponse.json();
+      console.log("#################:", deliveryPayload);
+      console.log("$$$$$$$$$$", deliveryData);
+
       setAPIDeliveryFee(deliveryData.data);
 
       // Return the delivery fee for the selected vehicle type
@@ -468,6 +475,7 @@ const getAddressCoordinates = (
       setIsDeliveryFeeLoading(false);
     }
   }
+  console.log("selectedAddress", selectedAddress)
 
   useEffect(() => {
     handelDeliveryFee();
@@ -656,7 +664,7 @@ const getAddressCoordinates = (
       }
     } catch (error) {
       console.error("Order error:", error);
-      console.log("Result:333333333333333333", result);
+      console.log("Result:333333333333333333 line 667{checkout.tsx}", result);
 
       Alert.alert(
         "Error",

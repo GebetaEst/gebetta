@@ -3,6 +3,7 @@ import colors from "@/constants/colors";
 import typography from "@/constants/typography";
 import { useCartStore } from "@/store/cartStore";
 import { OrderServiceType } from "@/types/restaurant";
+import { normalizeRestaurantId } from "@/utils/restaurant";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FontAwesome } from "@expo/vector-icons";
@@ -125,29 +126,44 @@ export default function MenuItemDetailScreen() {
   }
 
   const handleAddToCart = () => {
-    if (restaurantId && menuItem) {
-      // Add the item to cart with default quantity of 1
-      addToCart(restaurantId, menuItem._id, 1, serviceType, {
-        name: menuItem.foodName,
-        price: menuItem.price,
-      });
-      
-      Alert.alert(
-        "Added to Cart",
-        `${menuItem.foodName} added to your cart.`,
-        [
-          {
-            text: "Continue Shopping",
-            onPress: () => router.back(),
-            style: "cancel",
-          },
-          {
-            text: "View Cart",
-            onPress: () => router.push("/cart"),
-          },
-        ]
-      );
+    if (!menuItem) {
+      return;
     }
+
+    const resolvedRestaurantId =
+      normalizeRestaurantId(restaurantId as string | undefined) ??
+      normalizeRestaurantId(menuItem.menuId?.restaurantId);
+
+    if (!resolvedRestaurantId) {
+      Alert.alert(
+        "Unable to add item",
+        "We couldn't determine which restaurant this item belongs to. Please try again later."
+      );
+      return;
+    }
+
+    // Add the item to cart with default quantity of 1
+    addToCart(resolvedRestaurantId, menuItem._id, 1, serviceType, {
+      name: menuItem.foodName,
+      price: menuItem.price,
+      restaurantId: resolvedRestaurantId,
+    });
+    
+    Alert.alert(
+      "Added to Cart",
+      `${menuItem.foodName} added to your cart.`,
+      [
+        {
+          text: "Continue Shopping",
+          onPress: () => router.back(),
+          style: "cancel",
+        },
+        {
+          text: "View Cart",
+          onPress: () => router.push("/cart"),
+        },
+      ]
+    );
   };
 
   return (

@@ -16,7 +16,7 @@ import MapView, { Marker, Region, Polyline } from "react-native-maps";
 import { Truck, Bike, Navigation, MapPin } from "lucide-react-native";
 import { ref, onValue, off } from 'firebase/database';
 import { database } from '@/firebase';
-import { Audio } from 'expo-av';
+import { Audio } from 'expo-av'; 
 
 const { width, height } = Dimensions.get("window");
 const ICON_SIZE = 32;
@@ -486,10 +486,10 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
       return true; // prevent default
     };
 
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
 
     return () => {
-      backHandler.remove();
+      BackHandler.removeEventListener('hardwareBackPress', onBackPress);
     };
   }, [router]);
 
@@ -865,4 +865,3 @@ const styles = StyleSheet.create({
 });
 
 export default TrackingMap;
-

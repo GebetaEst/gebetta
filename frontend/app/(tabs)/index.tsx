@@ -31,6 +31,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { normalizeRestaurantId } from "@/utils/restaurant";
 
 // Convert API restaurant to app's Restaurant type
 function toAppRestaurant(apiRestaurant: any): Restaurant {
@@ -522,7 +523,9 @@ export default function HomeScreen() {
                   key={index}
                   style={styles.recipeCard}
                   onPress={() => {
-                    const restaurantId = food.restaurantId ?? food.menuId?.restaurantId;
+                    const restaurantId =
+                      normalizeRestaurantId(food.restaurantId) ??
+                      normalizeRestaurantId(food.menuId?.restaurantId);
                     const foodId = food._id ?? food.id;
 
                     if (restaurantId && foodId) {
@@ -552,7 +555,7 @@ export default function HomeScreen() {
                     </View>
                   </View>
                 </TouchableOpacity>
-               ) , console.log("Food:333333333333333333", JSON.stringify(filteredFoods, null, 2)))}
+               ) , )}
             </ScrollView>
           </View>
 

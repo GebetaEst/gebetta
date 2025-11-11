@@ -29,6 +29,7 @@ import colors from '../../constants/colors';
 import typography from '../../constants/typography';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { normalizeRestaurantId } from '../../utils/restaurant';
 
 const { width } = Dimensions.get('window');
 
@@ -292,10 +293,22 @@ export default function RestaurantDetailScreen() {
     const quantity = quantitySelections[food._id] || 1;
     
     // Use global cart store with proper data structure (handle both id formats)
-    const restaurantId = restaurant?.id || restaurant?._id || '';
-    addToCart(restaurantId, food._id, quantity, undefined, {
+    const resolvedRestaurantId = normalizeRestaurantId(
+      (restaurant?.id || restaurant?._id || id) as string | undefined
+    );
+
+    if (!resolvedRestaurantId) {
+      Alert.alert(
+        "Unable to add item",
+        "We couldn't determine which restaurant this selection belongs to. Please try again later."
+      );
+      return;
+    }
+
+    addToCart(resolvedRestaurantId, food._id, quantity, undefined, {
       name: food.foodName,
       price: food.price,
+      restaurantId: resolvedRestaurantId,
     });
     
     // Reset quantity selection after adding to cart
