@@ -48,6 +48,7 @@
     "gebeta": "^0.0.4",
     "geolib": "^3.3.4",
     "glob": "^11.0.3",
+    "gmaps-expand-shorturl": "^5.5.0",
     "lucide-react-native": "^0.525.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

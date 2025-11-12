@@ -7,7 +7,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { OrderServiceType } from "@/types/restaurant";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { Clock, MapPin, CreditCard, ShoppingBag } from "lucide-react-native";
+import { Clock, MapPin, CreditCard, ShoppingBag, Gift } from "lucide-react-native";
 import React, { useCallback, useEffect, useState, useRef } from "react";
 import {
   Alert,
@@ -28,6 +28,7 @@ import {
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 import responsive from "@/utils/responsive";
+import SendGift from "./restaurant/GIft";
 
 const { width } = Dimensions.get("window");
 const isTablet = width > 768;
@@ -229,6 +230,8 @@ const getAddressCoordinates = (
   const [APIDeliveryFee, setAPIDeliveryFee] = useState<any>({});
   const [deliveryFeeDisplay, setDeliveryFeeDisplay] = useState(0);
   const [isDeliveryFeeLoading, setIsDeliveryFeeLoading] = useState(false);
+  const [giftLocation, setGiftLocation] = useState<{ latitude: number, longitude: number } | null>(null);
+  const [reviserPhone, setReviserPhone ] = useState<number | null>(null);
   
 
   // Location tracking states
@@ -243,7 +246,7 @@ const getAddressCoordinates = (
 
   // Calculate delivery fee from API based on vehicle type
   const getAPIDeliveryFee = () => {
-    if (serviceType !== "delivery") return 0;
+    if (serviceType !== "delivery" && serviceType !== "gift") return 0;
     if (!APIDeliveryFee || typeof APIDeliveryFee !== 'object') return 0;
     
     if (vehicleType === "Car" && APIDeliveryFee.Car) return APIDeliveryFee.Car.deliveryFee || 0;
@@ -382,7 +385,7 @@ const getAddressCoordinates = (
 
   const handelDeliveryFee = async () => {
     // Only fetch delivery fee when service type is delivery
-    if (serviceType !== "delivery") {
+    if (serviceType !== "delivery" && serviceType !== "gift") {
       setIsDeliveryFeeLoading(false);
       return;
     }
@@ -392,12 +395,19 @@ const getAddressCoordinates = (
     let destinationCoords: { lat: number; lng: number } | null = null;
     
     // Priority 1: If user chose to use address list and selected an address
-    if (locationRefused && selectedAddress) {
+    if(serviceType === "gift" ) {
+        destinationCoords = {
+          lat: giftLocation?.lat,
+          lng: giftLocation?.lng,
+        };
+      console.log("Using gift location coordinates:::::::::::::::::::::::::;", destinationCoords);
+    }
+    else if (locationRefused && selectedAddress) {
       const address = addresses.find(addr => getAddressId(addr) === selectedAddress);
       console.log("Address:", address);
       if (address) {
         const addressCoords = getAddressCoordinates(address);
-        if (addressCoords) {
+        if (addressCoords && serviceType !== "gift") {
           // Use the selected address coordinates
           destinationCoords = addressCoords;
           console.log("Using selected address coordinates:", destinationCoords);
@@ -479,7 +489,7 @@ const getAddressCoordinates = (
 
   useEffect(() => {
     handelDeliveryFee();
-  }, [selectedAddress, serviceType, vehicleType, currentLocation])
+  }, [selectedAddress, serviceType, vehicleType, currentLocation, giftLocation])
 
   //handlePlaceOrder function to place an order
   const SERVICE_TYPE_TO_ORDER_TYPE = {
@@ -560,21 +570,20 @@ const getAddressCoordinates = (
             destinationLocation = phoneLocation ? {
               lat: phoneLocation.latitude,
               lng: phoneLocation.longitude,
-            } : {
-              lat: 9.033872,
-              lng: 38.750659,
-            };
+            } :null
           }
         } else {
           // Use phone location as destination when no address is selected
           destinationLocation = phoneLocation ? {
             lat: phoneLocation.latitude,
             lng: phoneLocation.longitude,
-          } : {
-            lat: 9.033872,
-            lng: 38.750659,
-          };
-        }
+          } : null
+        } 
+      } else if (serviceType === "gift") {
+        destinationLocation = giftLocation ? {
+          lat: giftLocation.latitude,
+          lng: giftLocation.longitude,
+        } : null;
       }
   
       // Base payload structure
@@ -590,17 +599,23 @@ const getAddressCoordinates = (
           quantity: item.quantity,
         })),
         typeOfOrder,
+        fromSponsore: serviceType === "gift" ? true : false,
         tip: tip,
         description: orderDescription,
+        sponsoredPhone: serviceType === "gift" ? reviserPhone : null,
       };
-  
       // Add service type specific fields
-      if (serviceType === "delivery") {
+      if (serviceType === "delivery" ) {
         orderPayload.vehicleType = vehicleType;
-        orderPayload.destinationLocation = destinationLocation;
+        orderPayload.destinationLocation = destinationLocation
         orderPayload.callculatedDeliveryFee = apiDeliveryFee;
       } else if (serviceType === "pickup") {
         orderPayload.pickupTime = pickupTime;
+      } else if (serviceType === "gift") {
+        orderPayload.vehicleType = vehicleType;
+        orderPayload.callculatedDeliveryFee = apiDeliveryFee;
+
+        orderPayload.destinationLocation = giftLocation;
       } else if (serviceType === "dine-in") {
         orderPayload.tableNumber = tableNumber;
       }
@@ -609,17 +624,16 @@ const getAddressCoordinates = (
       console.log("Order Payload being sent:", JSON.stringify(orderPayload, null, 2));
 
       // Validate destinationLocation for delivery orders
-      if (serviceType === "delivery" && !destinationLocation) {
+      if ((serviceType === "delivery") && !destinationLocation ) {
         Alert.alert("Error", "Delivery location is required");
         setIsProcessing(false);
         return;
       }
-// console.log("Order Payload being sent:", JSON.stringify(orderPayload, null, 2));
+console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderPayload, null, 2));
       const response = await fetch(
         "https://gebeta-delivery1.onrender.com/api/v1/orders/place-order",
         {
-          method: "POST",
-          headers: {
+          method: "POST",          headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
@@ -828,12 +842,14 @@ const getAddressCoordinates = (
         return "Dine-in";
       case "pickup":
         return "Pickup";
+      case "gift":
+        return "Gift";
       default:
         return "Delivery";
     }
   };
 
-  const getServiceTypeIcon = (type: OrderServiceType) => {
+  const getServiceTypeIcon = (type: any) => {
     switch (type) {
       case "delivery":
         return MapPin;
@@ -841,10 +857,13 @@ const getAddressCoordinates = (
         return Clock;
       case "pickup":
         return ShoppingBag;
+      case "gift":
+        return Gift;
       default:
         return MapPin;
     }
   };
+  console.log("giftLocationnnnnnnnnnnnnnnnnnnnn ####", giftLocation)
 
   if (isLoading) {
     return (
@@ -935,9 +954,13 @@ const getAddressCoordinates = (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Choose Service Type</Text>
             <View style={styles.serviceTypeContainer}>
-              {(["delivery", "dine-in", "pickup"] as OrderServiceType[]).map((type) => {
+              {(["delivery", "dine-in", "pickup", "gift"] as OrderServiceType[]).map((type) => {
                 const IconComponent = getServiceTypeIcon(type);
                 const isActive = serviceType === type;
+                const onPress =
+                  type === "gift"
+                    ? () => setServiceType("gift")
+                    : () => handleServiceTypeChange(type);
                 return (
                   <TouchableOpacity
                     key={type}
@@ -945,7 +968,7 @@ const getAddressCoordinates = (
                       styles.serviceTypeButton,
                       isActive && styles.serviceTypeButtonActive,
                     ]}
-                    onPress={() => handleServiceTypeChange(type)}
+                    onPress={onPress}
                   >
                     <View style={[
                       styles.serviceTypeGradient,
@@ -969,10 +992,26 @@ const getAddressCoordinates = (
               })}
             </View>
           </View>
+          {serviceType === "gift" && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Gift Location</Text>
+              <SendGift setGiftLocation={setGiftLocation} giftLocation={giftLocation} />
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.customTipLabel}>Reviser Phone</Text>
+                <TextInput
+                  style={[styles.customTipInput, { paddingVertical: 14 }]}
+                  placeholder="Enter the phone number of the person you want to send the gift to"
+                  value={reviserPhone || ""}
+                  onChangeText={(text) => setReviserPhone(text as unknown as number)}
+                  // keyboardType="numeric"
+                />
+              </View>
+            </View>
+          )}
 
 
           {/* Vehicle Type for Delivery */}
-          {serviceType === "delivery" && (
+          {serviceType === "delivery" || serviceType === "gift" && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Delivery Vehicle</Text>
               <View style={styles.vehicleTypeContainer}>
@@ -1007,51 +1046,46 @@ const getAddressCoordinates = (
             </View>
           )}
           {/* Location Tracking Section */}
-          <View style={styles.section} onLayout={handleSectionLayout("location")}>
-            <Text style={styles.sectionTitle}>Use Current location</Text>
-            <View style={styles.locationContainer}>
-              {currentLocation ? (
-                <View style={styles.locationSuccessContainer}>
-                  <MapPin size={20} color={colors.success} />
-                  <View style={styles.locationDetails}>
-                    <Text style={styles.locationStatusText}>Location captured successfully</Text>
-                    <Text style={styles.locationCoordsText}>
-                      {/* {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)} */}
-                    </Text>
+          {serviceType !== "gift" && (
+            <View style={styles.section} onLayout={handleSectionLayout("location")}>
+              <Text style={styles.sectionTitle}>Use Current location</Text>
+              <View style={styles.locationContainer}>
+                {currentLocation ? (
+                  <View style={styles.locationSuccessContainer}>
+                    <MapPin size={20} color={colors.success} />
+                    <View style={styles.locationDetails}>
+                      <Text style={styles.locationStatusText}>Location captured successfully</Text>
+                     
+                    </View>
                   </View>
+                ) : (
                   <TouchableOpacity
-                    style={styles.refreshLocationButton}
+                    style={styles.getLocationButton}
                     onPress={getCurrentLocation}
                     disabled={isGettingLocation}
                   >
-                    <MapPin size={16} color={colors.primary} />
+                    <View style={styles.getLocationGradient}>
+                      <MapPin size={24} color={colors.primary} />
+                      <Text style={styles.getLocationText}>
+                        {isGettingLocation ? "Getting Location..." : "Use Current Location"}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.getLocationButton}
-                  onPress={getCurrentLocation}
-                  disabled={isGettingLocation}
-                >
-                  <View style={styles.getLocationGradient}>
-                    <MapPin size={24} color={colors.primary} />
-                    <Text style={styles.getLocationText}>
-                      {isGettingLocation ? "Getting Location..." : "Use Current Location"}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
+                )}
+              </View>
+              {/* <Text style={styles.locationInfoText}>
+              Your exact location will be tracked when placing the order for better service delivery.
+            </Text> */}
             </View>
-            {/* <Text style={styles.locationInfoText}>
-            Your exact location will be tracked when placing the order for better service delivery.
-          </Text> */}
-          </View>
+          )}
 
           {/* Delivery Address - Show/Hide Address List */}
-          <Button style={styles.section} title={`${locationRefused ? "Hide Address List" : "Use Other Addresses"}`} onPress={() => {
-            setLocationRefused(prev => !prev);
-            fetchAddresses();
-          }} />
+          {serviceType !== "gift" && (
+            <Button style={styles.section} title={`${locationRefused ? "Hide Address List" : "Use Other Addresses"}`} onPress={() => {
+              setLocationRefused(prev => !prev);
+              fetchAddresses();
+            }} />
+          )}
 
           {/* Delivery Address - Only show if user refused location */}
           {serviceType === "delivery" && locationRefused && (
@@ -1301,7 +1335,7 @@ const getAddressCoordinates = (
                 <Text style={styles.summaryValue}>{subtotal.toFixed(2)} Birr</Text>
               </View>
 
-              {serviceType === "delivery" && (
+              {serviceType === "delivery" || serviceType === "gift" && (
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Delivery Fee</Text>
                   {isDeliveryFeeLoading ? (
@@ -1538,7 +1572,8 @@ const styles = StyleSheet.create({
   serviceTypeContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 8,
+    
   },
   serviceTypeButton: {
     flex: 1,

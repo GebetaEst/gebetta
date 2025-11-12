@@ -24,6 +24,7 @@ declare module 'lucide-react-native' {
   export const CreditCard: ComponentType<IconProps>;
   export const Edit2: ComponentType<IconProps>;
   export const Grid: ComponentType<IconProps>;
+  export const Gift: ComponentType<IconProps>;
   export const Home: ComponentType<IconProps>;
   export const Info: ComponentType<IconProps>;
   export const LogOut: ComponentType<IconProps>;

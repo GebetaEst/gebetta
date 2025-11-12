@@ -33,6 +33,7 @@ declare module 'lucide-react-native' {
   export const Filter: ComponentType<IconProps>;
   export const Flame: ComponentType<IconProps>;
   export const Globe: ComponentType<IconProps>;
+  export const Gift: ComponentType<IconProps>;
   export const Grid: ComponentType<IconProps>;
   export const Home: ComponentType<IconProps>;
   export const Info: ComponentType<IconProps>;

@@ -162,7 +162,7 @@ export type OrderStatus =
 
 export type PaymentStatus = "pending" | "paid" | "failed";
 
-export type OrderServiceType = "delivery" | "pickup" | "dine-in";
+export type OrderServiceType = "delivery" | "pickup" | "dine-in" | "gift";
 
 export interface RestaurantFilter {
   cuisine?: string[];
