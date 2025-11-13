@@ -8,14 +8,18 @@ import {
   Keyboard,
   Platform,
   Alert,
+  KeyboardAvoidingView,
 } from "react-native";
 import MapView, { Marker, Region, PROVIDER_GOOGLE, MapPressEvent } from "react-native-maps";
 import * as Location from "expo-location";
+import colors from "@/constants/colors";
+import typography from "@/constants/typography";
+import Button from "@/components/Button";
 
 type Coordinates = { lat: number | null; lng: number | null };
 type MapType = "standard" | "satellite" | "hybrid" | "terrain";
 
-const SendGift: React.FC<{ setGiftLocation: (location: { latitude: number, longitude: number }) => void, giftLocation: { latitude: number, longitude: number } | null }> = ({ setGiftLocation, giftLocation }) => {
+const SendGift: React.FC<{ setGiftLocation: (location: { lat: number, lng: number }) => void, giftLocation: { lat: number, lng: number } | null }> = ({ setGiftLocation, giftLocation }) => {
   const [address, setAddress] = useState<string>("");
   const [coords, setCoords] = useState<Coordinates>({ lat: null, lng: null });
   const [processing, setProcessing] = useState(false);
@@ -25,7 +29,7 @@ const SendGift: React.FC<{ setGiftLocation: (location: { latitude: number, longi
     latitudeDelta: 5.05,
     longitudeDelta: 5.05,
   });
-  const [mapType, setMapType] = useState<MapType>("satellite");
+  const [mapType, setMapType] = useState<MapType>("standard");
   const [is3D, setIs3D] = useState(true);
 
   // 🧭 When coordinates change, update map region
@@ -58,7 +62,7 @@ const SendGift: React.FC<{ setGiftLocation: (location: { latitude: number, longi
       if (results.length > 0) {
         const { latitude, longitude } = results[0];
         setCoords({ lat: latitude, lng: longitude });
-        setGiftLocation({ latitude, longitude });
+        setGiftLocation({ lat: latitude, lng: longitude });
         setMapRegion({
           latitude,
           longitude,
@@ -98,7 +102,7 @@ const SendGift: React.FC<{ setGiftLocation: (location: { latitude: number, longi
       latitude: mapRegion.latitude,
       longitude: mapRegion.longitude,
     },
-    pitch: 0 ,
+    pitch: 0,
     heading: 0,
     altitude: 1000,
     zoom: 17,
@@ -106,32 +110,44 @@ const SendGift: React.FC<{ setGiftLocation: (location: { latitude: number, longi
 
   return (
     <View style={styles.container}>
+      <Text style={styles.sectionTitle}>Select Gift Location</Text>
       <Text style={styles.instructions}>
         Enter a place name or tap anywhere on the map to select a location.
       </Text>
 
-      <TextInput
-        placeholder="Enter address (e.g., Ethiopia, Addis Ababa, Ayertena)"
-        value={address}
-        onChangeText={setAddress}
-        autoCapitalize="none"
-        autoCorrect={false}
-        style={styles.input}
-        editable={!processing}
-      />
-
-      <TouchableOpacity
-        style={[styles.button, (!address.trim() || processing) && { opacity: 0.5 }]}
-        activeOpacity={0.8}
-        disabled={!address.trim() || processing}
-        onPress={handleSearch}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.inputContainer}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
-        <Text style={styles.buttonText}>{processing ? "Searching..." : "Find Location"}</Text>
-      </TouchableOpacity>
+        <View style={styles.textInputWrapper}>
+          <TextInput
+            placeholder="Enter address (e.g., Ethiopia, Addis Ababa, Ayertena)"
+            value={address}
+            onChangeText={setAddress}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.input}
+            editable={!processing}
+            placeholderTextColor={colors.lightText}
+          />
+        </View>
+      </KeyboardAvoidingView>
+
+      <Button
+        title={processing ? "Searching..." : "Find Location"}
+        onPress={handleSearch}
+        disabled={!address.trim() || processing}
+        loading={processing}
+        variant="primary"
+        size="large"
+        fullWidth
+        style={styles.ctaButton}
+      />
 
       {/* Map Style Selector */}
       <View style={styles.mapStyleContainer}>
-        <Text style={styles.mapStyleLabel}>Map Style:</Text>
+        <Text style={styles.mapStyleLabel}>Map Style</Text>
         <View style={styles.mapTypeRow}>
           {(["standard", "satellite", "hybrid"] as MapType[]).map((type) => (
             <TouchableOpacity
@@ -153,7 +169,7 @@ const SendGift: React.FC<{ setGiftLocation: (location: { latitude: number, longi
             </TouchableOpacity>
           ))}
         </View>
-        
+
       </View>
 
       {/* Map */}
@@ -187,11 +203,11 @@ const SendGift: React.FC<{ setGiftLocation: (location: { latitude: number, longi
 
       {/* Coordinates Display */}
       {coords.lat && coords.lng ? (
+        // <View>
         <View style={styles.coordsContainer}>
-          <Text style={styles.label}>Latitude:</Text>
-          <Text style={styles.value}>{coords.lat}</Text>
-          <Text style={styles.label}>Longitude:</Text>
-          <Text style={styles.value}>{coords.lng}</Text>
+          <View style={styles.coordsRow}>
+            <Text style={styles.label}>Location has been captured.</Text>
+          </View>
         </View>
       ) : (
         <Text style={styles.placeholder}>Tap on the map or search an address</Text>
@@ -201,68 +217,90 @@ const SendGift: React.FC<{ setGiftLocation: (location: { latitude: number, longi
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#ffffff", padding: 6 },
-  heading: { fontSize: 22, fontWeight: "800", color: "#333", marginBottom: 6, marginTop: 18 },
-  instructions: { fontSize: 15, color: "#555", marginBottom: 14 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#96B7FF",
-    backgroundColor: "#FFF",
-    padding: 13,
-    borderRadius: 8,
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: "#4C8BF5",
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: "center",
+  container: { flex: 1, backgroundColor: colors.background, padding: 16 },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: colors.text,
     marginBottom: 8,
   },
-  buttonText: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
+  instructions: { ...typography.body, color: colors.lightText, marginBottom: 12 },
+  input: {
+    padding: 14,
+    fontSize: 16,
+    color: colors.text,
+  },
+  inputContainer: {
+    marginBottom: 12,
+  },
+  textInputWrapper: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.divider,
+    overflow: "hidden",
+  },
+  ctaButton: {
+    marginBottom: 10,
+  },
   mapStyleContainer: { marginBottom: 10 },
-  mapStyleLabel: { fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 6 },
+  mapStyleLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 6,
+  },
   mapTypeRow: { flexDirection: "row", justifyContent: "space-around", marginBottom: 8 },
   mapTypeButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#DDD",
-    backgroundColor: "#FFF",
+    borderColor: colors.divider,
+    backgroundColor: colors.white,
     minWidth: 60,
     alignItems: "center",
   },
-  selectedMapTypeButton: { backgroundColor: "#4C8BF5", borderColor: "#4C8BF5" },
-  mapTypeButtonText: { fontSize: 12, fontWeight: "500", color: "#666" },
-  selectedMapTypeButtonText: { color: "#FFF" },
+  selectedMapTypeButton: { backgroundColor: colors.primary, borderColor: colors.primary },
+  mapTypeButtonText: { fontSize: 12, fontWeight: "500", color: colors.lightText },
+  selectedMapTypeButtonText: { color: colors.white },
   toggleButton: {
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.cardBackground,
     paddingVertical: 8,
     borderRadius: 6,
     alignItems: "center",
   },
-  selectedToggleButton: { backgroundColor: "#10B981" },
-  toggleButtonText: { fontSize: 14, fontWeight: "500", color: "#374151" },
-  selectedToggleButtonText: { color: "#FFF" },
+  selectedToggleButton: { backgroundColor: colors.success },
+  toggleButtonText: { fontSize: 14, fontWeight: "500", color: colors.text },
+  selectedToggleButtonText: { color: colors.white },
   mapContainer: {
     width: "100%",
     height: 280,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: "hidden",
     marginTop: 10,
+    borderWidth: 2,
+    borderColor: colors.divider,
+    backgroundColor: colors.white,
   },
   map: { width: "100%", height: "100%" },
   coordsContainer: {
-    backgroundColor: "#EDF2FF",
-    borderRadius: 8,
+    backgroundColor: "lightgreen",
+    borderRadius: 12,
     padding: 14,
     marginTop: 12,
+    borderWidth: 2,
+    borderColor: colors.divider,
   },
-  label: { fontWeight: "700", fontSize: 15, color: "#3756a3" },
-  value: { fontSize: 16, marginBottom: 7, color: "#333" },
-  placeholder: { color: "#9CA3AF", fontStyle: "italic", fontSize: 16, marginTop: 8 },
+  coordsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  label: { fontWeight: "600", fontSize: 20, color: colors.lightText },
+  value: { fontSize: 16, color: colors.text, fontWeight: "500" },
+  placeholder: { color: colors.lightText, fontStyle: "italic", fontSize: 14, marginTop: 8 },
 });
 
 export default SendGift;

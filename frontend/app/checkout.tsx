@@ -24,6 +24,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   LayoutChangeEvent,
+  Keyboard,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
@@ -230,9 +231,21 @@ const getAddressCoordinates = (
   const [APIDeliveryFee, setAPIDeliveryFee] = useState<any>({});
   const [deliveryFeeDisplay, setDeliveryFeeDisplay] = useState(0);
   const [isDeliveryFeeLoading, setIsDeliveryFeeLoading] = useState(false);
-  const [giftLocation, setGiftLocation] = useState<{ latitude: number, longitude: number } | null>(null);
+  const [giftLocation, setGiftLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [reviserPhone, setReviserPhone ] = useState<number | null>(null);
   
+  // Track keyboard visibility to avoid footer overlaying inputs
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Location tracking states
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number, longitude: number } | null>(null);
@@ -397,8 +410,8 @@ const getAddressCoordinates = (
     // Priority 1: If user chose to use address list and selected an address
     if(serviceType === "gift" ) {
         destinationCoords = {
-          lat: giftLocation?.lat,
-          lng: giftLocation?.lng,
+          lat: giftLocation?.lat as number,
+          lng: giftLocation?.lng as number,
         };
       console.log("Using gift location coordinates:::::::::::::::::::::::::;", destinationCoords);
     }
@@ -581,8 +594,8 @@ const getAddressCoordinates = (
         } 
       } else if (serviceType === "gift") {
         destinationLocation = giftLocation ? {
-          lat: giftLocation.latitude,
-          lng: giftLocation.longitude,
+          lat: giftLocation.lat,
+          lng: giftLocation.lng,
         } : null;
       }
   
@@ -1001,9 +1014,12 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
                 <TextInput
                   style={[styles.customTipInput, { paddingVertical: 14 }]}
                   placeholder="Enter the phone number of the person you want to send the gift to"
-                  value={reviserPhone || ""}
-                  onChangeText={(text) => setReviserPhone(text as unknown as number)}
-                  // keyboardType="numeric"
+                value={reviserPhone !== null ? String(reviserPhone) : ""}
+                onChangeText={(text) => {
+                  const digitsOnly = text.replace(/[^0-9]/g, "");
+                  setReviserPhone(digitsOnly ? Number(digitsOnly) : null);
+                }}
+                keyboardType="phone-pad"
                 />
               </View>
             </View>
@@ -1011,7 +1027,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
 
 
           {/* Vehicle Type for Delivery */}
-          {serviceType === "delivery" || serviceType === "gift" && (
+          {(serviceType === "delivery" || serviceType === "gift") ?  (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Delivery Vehicle</Text>
               <View style={styles.vehicleTypeContainer}>
@@ -1044,7 +1060,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
                 })}
               </View>
             </View>
-          )}
+          ):null }
           {/* Location Tracking Section */}
           {serviceType !== "gift" && (
             <View style={styles.section} onLayout={handleSectionLayout("location")}>
@@ -1366,45 +1382,47 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
             </View>
           </View>
 
-          
+        
         </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Footer with Place Order Button */}
-      <View style={styles.footer}>
-        <View style={styles.footerContainer}>
-          <View style={styles.totalContainer}>
-            <View>
-              <Text style={styles.footerTotalLabel}>Total Amount</Text>
-              {isDeliveryFeeLoading ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Text style={styles.totalAmount}>{total.toFixed(2)} Birr</Text>
-                  )}
+      {!isKeyboardVisible && (
+        <View style={styles.footer}>
+          <View style={styles.footerContainer}>
+            <View style={styles.totalContainer}>
+              <View>
+                <Text style={styles.footerTotalLabel}>Total Amount</Text>
+                {isDeliveryFeeLoading ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Text style={styles.totalAmount}>{total.toFixed(2)} Birr</Text>
+                    )}
+              </View>
+              <View style={styles.orderTypeBadge}>
+                <Text style={styles.orderTypeText}>{getServiceTypeLabel(serviceType)}</Text>
+              </View>
             </View>
-            <View style={styles.orderTypeBadge}>
-              <Text style={styles.orderTypeText}>{getServiceTypeLabel(serviceType)}</Text>
-            </View>
-          </View>
 
-          <Button
-            title={`Place ${getServiceTypeLabel(serviceType)} Order`}
-            onPress={handlePlaceOrder}
-            loading={isProcessing}
-            disabled={
-              isLoading ||
-              isProcessing ||
-              (serviceType === "delivery" && locationRefused && !selectedAddress) ||
-              (serviceType === "dine-in" && !tableNumber) ||
-              (serviceType === "pickup" && !pickupTime)
-            }
-            style={styles.placeOrderButton}
-            variant="primary"
-            size="large"
-            fullWidth
-          />
+            <Button
+              title={`Place ${getServiceTypeLabel(serviceType)} Order`}
+              onPress={handlePlaceOrder}
+              loading={isProcessing}
+              disabled={
+                isLoading ||
+                isProcessing ||
+                (serviceType === "delivery" && locationRefused && !selectedAddress) ||
+                (serviceType === "dine-in" && !tableNumber) ||
+                (serviceType === "pickup" && !pickupTime)
+              }
+              style={styles.placeOrderButton}
+              variant="primary"
+              size="large"
+              fullWidth
+            />
+          </View>
         </View>
-      </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -1592,7 +1610,7 @@ const styles = StyleSheet.create({
   serviceTypeGradient: {
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: 15,
     minHeight: 100,
   },
   serviceTypeActive: {
@@ -2000,7 +2018,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   orderSummaryCard: {
-    marginBottom: 24,
+    marginBottom: 44,
     borderRadius: 16,
     overflow: 'hidden',
     elevation: 6,
@@ -2073,14 +2091,17 @@ const styles = StyleSheet.create({
   },
   footerContainer: {
     padding: 20,
+    paddingTop: 3,
     paddingBottom: Platform.OS === "ios" ? 40 : 20,
     backgroundColor: colors.white,
+    marginTop: 0,
+
   },
   totalContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 15,
   },
   footerTotalLabel: {
     fontSize: 14,
