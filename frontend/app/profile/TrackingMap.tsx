@@ -11,12 +11,14 @@ import {
   Platform,
   Linking,
   Vibration,
+  ActivityIndicator,
 } from "react-native";
 import MapView, { Marker, Region, Polyline } from "react-native-maps";
 import { Truck, Bike, Navigation, MapPin } from "lucide-react-native";
-import { ref, onValue, off } from 'firebase/database';
-import { database } from '@/firebase';
-import { Audio } from 'expo-av'; 
+import { ref, onValue, off, Database } from 'firebase/database';
+import { Audio } from 'expo-av';
+import { fetchAndInitializeFirebase } from '@/services/firebaseConfigService';
+import { useAuthStore } from '@/store/useAuthStore'; 
 
 const { width, height } = Dimensions.get("window");
 const ICON_SIZE = 32;
@@ -73,6 +75,7 @@ interface OrderData {
 
 const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [deliveryLocation, setDeliveryLocation] = useState<DeliveryLocation | null>(null);
   const [deliveryPerson, setDeliveryPerson] = useState<DeliveryPerson | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>("Loading...");
@@ -89,6 +92,9 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
   const [hasNotified200m, setHasNotified200m] = useState(false);
   const [hasNotified100m, setHasNotified100m] = useState(false);
   const [hasNotifiedArrived, setHasNotifiedArrived] = useState(false);
+  const [firebaseDatabase, setFirebaseDatabase] = useState<Database | null>(null);
+  const [updateInterval, setUpdateInterval] = useState<number>(3); // Default 3 seconds
+  const [isInitializingFirebase, setIsInitializingFirebase] = useState(true);
   const mapRef = useRef<MapView>(null);
   const hasInitiallyFitted = useRef(false); // Track if we've done initial fit
   const hasLoadedRoute = useRef(false); // Track if route has been loaded
@@ -357,21 +363,57 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
     }
   };
 
+  // Initialize Firebase with dynamic config
   useEffect(() => {
-    if (!orderId) {
-      Alert.alert("Error", "Order ID is required for tracking.");
+    const initFirebase = async () => {
+      if (!user?.token) {
+        Alert.alert("Error", "Authentication token is required for tracking.");
+        setIsInitializingFirebase(false);
+        return;
+      }
+
+      try {
+        setIsInitializingFirebase(true);
+        const { database, config } = await fetchAndInitializeFirebase(user.token);
+        setFirebaseDatabase(database);
+        
+        // Set update interval from config (convert string to number)
+        const interval = parseInt(config.sendDurationInSeconds || '3', 10);
+        setUpdateInterval(interval);
+        
+        console.log(`✅ Firebase ready. Updates every ${interval} seconds`);
+        setIsInitializingFirebase(false);
+      } catch (error) {
+        console.error('❌ Failed to initialize Firebase:', error);
+        Alert.alert(
+          "Firebase Error",
+          "Unable to initialize real-time tracking. Please try again later."
+        );
+        setIsInitializingFirebase(false);
+      }
+    };
+
+    initFirebase();
+  }, [user?.token]);
+
+  // Listen to Firebase updates
+  useEffect(() => {
+    if (!orderId || !firebaseDatabase) {
       return;
     }
 
+    console.log(`📡 Starting real-time tracking for order: ${orderId}`);
+    
     // Create Firebase reference for the specific order
-    const orderRef = ref(database, `deliveryOrders/${orderId}`);
+    const orderRef = ref(firebaseDatabase, `deliveryOrders/${orderId}`);
 
-    // Listen for real-time updates (updates every 3 seconds from delivery guy)
+    // Listen for real-time updates (updates every sendDurationInSeconds from delivery guy)
     const unsubscribe = onValue(
       orderRef,
       (snapshot) => {
         if (snapshot.exists()) {
           const orderData: OrderData = snapshot.val();
+          console.log(`📍 Location update received (updates every ${updateInterval}s)`);
 
           // Update delivery guy's current location
           if (orderData.deliveryLocation) {
@@ -461,9 +503,11 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
         } else {
           setIsTracking(false);
           setOrderStatus("No tracking data available");
+          console.log('⚠️ No tracking data found in Firebase');
         }
       },
       (error) => {
+        console.error('❌ Firebase tracking error:', error);
         Alert.alert(
           "Tracking Error",
           "Unable to track delivery. Please check your connection."
@@ -474,9 +518,10 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
 
     // Cleanup listener on unmount
     return () => {
+      console.log('🔌 Disconnecting Firebase listener');
       off(orderRef, "value", unsubscribe);
     };
-  }, [orderId]);
+  }, [orderId, firebaseDatabase, updateInterval]);
 
   // Prevent Android hardware back from returning to a previous Home screen
   useEffect(() => {
@@ -486,10 +531,10 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
       return true; // prevent default
     };
 
-    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
 
     return () => {
-      BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+      backHandler.remove(); // Use .remove() instead of removeEventListener
     };
   }, [router]);
 
@@ -519,16 +564,23 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        initialRegion={INITIAL_REGION}
-        showsUserLocation={true}
-        showsMyLocationButton={true}
-        showsTraffic={false}
-        onRegionChangeComplete={handleRegionChange}
-        onPanDrag={handleRegionChange}
-      >
+      {isInitializingFirebase ? (
+        <View style={styles.initLoadingContainer}>
+          <ActivityIndicator size="large" color="#4285F4" />
+          <Text style={styles.initLoadingText}>Initializing real-time tracking...</Text>
+        </View>
+      ) : (
+        <>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={INITIAL_REGION}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+            showsTraffic={false}
+            onRegionChangeComplete={handleRegionChange}
+            onPanDrag={handleRegionChange}
+          >
          {/* Restaurant/Pickup Location - START POINT */}
          {restaurantLocation && (
            <Marker
@@ -648,13 +700,15 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId }) => {
         </TouchableOpacity>
       )}
 
-      {/* Loading Indicator */}
-      {!isTracking && (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>
-            {orderStatus === "Loading..." ? "Loading tracking data..." : orderStatus}
-          </Text>
-        </View>
+          {/* Loading Indicator */}
+          {!isTracking && (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>
+                {orderStatus === "Loading..." ? "Loading tracking data..." : orderStatus}
+              </Text>
+            </View>
+          )}
+        </>
       )}
     </View>
   );
@@ -861,6 +915,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     marginLeft: 5,
+  },
+  initLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  initLoadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
 });
 
