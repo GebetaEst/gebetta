@@ -1,0 +1,286 @@
+{
+  "restaurants": [
+    {
+      "id": "1",
+      "name": "Addis Ababa Restaurant",
+      "description": "Authentic Ethiopian cuisine in the heart of the city. Experience traditional flavors and warm hospitality.",
+      "address": "Bole Road, Addis Ababa",
+      "cuisine": ["Ethiopian", "Traditional"],
+      "priceLevel": "$$",
+      "openingHours": {
+        "Monday": {"open": "10:00", "close": "22:00"},
+        "Tuesday": {"open": "10:00", "close": "22:00"},
+        "Wednesday": {"open": "10:00", "close": "22:00"},
+        "Thursday": {"open": "10:00", "close": "22:00"},
+        "Friday": {"open": "10:00", "close": "23:00"},
+        "Saturday": {"open": "11:00", "close": "23:00"},
+        "Sunday": {"open": "11:00", "close": "22:00"}
+      },
+      "contactPhone": "+251911234567",
+      "contactEmail": "info@addisababarestaurant.com",
+      "ownerId": "3",
+      "rating": 4.7,
+      "ratingCount": 128,
+      "imageUrl": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=500",
+      "coverImageUrl": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=500",
+      "isOpen": true,
+      "createdAt": "2022-10-15T08:30:00Z",
+      "updatedAt": "2023-05-20T14:15:00Z",
+      "location": {
+        "latitude": 9.0222,
+        "longitude": 38.7468
+      },
+      "categories": ["Dinner", "Lunch", "Breakfast", "Coffee", "Dessert"],
+      "menu": [
+        {
+          "id": "item1",
+          "restaurantId": "1",
+          "name": "Doro Wat",
+          "description": "Spicy chicken stew served with injera bread",
+          "price": 180,
+          "category": "Main Course",
+          "imageUrl": "https://images.unsplash.com/photo-1567360425618-1594206637d2?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 25,
+          "ingredients": ["Chicken", "Berbere", "Onions", "Garlic", "Ginger"],
+          "allergens": ["None"],
+          "createdAt": "2022-10-15T09:30:00Z",
+          "updatedAt": "2022-10-15T09:30:00Z"
+        },
+        {
+          "id": "item2",
+          "restaurantId": "1",
+          "name": "Tibs",
+          "description": "Sautéed meat with vegetables and spices",
+          "price": 160,
+          "category": "Main Course",
+          "imageUrl": "https://images.unsplash.com/photo-1511910849309-0dffb8785146?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 20,
+          "ingredients": ["Beef", "Peppers", "Onions", "Ethiopian Spices"],
+          "allergens": ["None"],
+          "createdAt": "2022-10-15T09:35:00Z",
+          "updatedAt": "2022-10-15T09:35:00Z"
+        },
+        {
+          "id": "item3",
+          "restaurantId": "1",
+          "name": "Injera",
+          "description": "Traditional sourdough flatbread",
+          "price": 30,
+          "category": "Side",
+          "imageUrl": "https://images.unsplash.com/photo-1566057340638-cacdc5f6c1c4?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 10,
+          "ingredients": ["Teff Flour", "Water"],
+          "allergens": ["Gluten"],
+          "createdAt": "2022-10-15T09:40:00Z",
+          "updatedAt": "2022-10-15T09:40:00Z"
+        },
+        {
+          "id": "item4",
+          "restaurantId": "1",
+          "name": "Ethiopian Coffee Ceremony",
+          "description": "Traditional coffee service with popcorn",
+          "price": 120,
+          "category": "Beverage",
+          "imageUrl": "https://images.unsplash.com/photo-1568649929103-28ffbefaca1e?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 15,
+          "ingredients": ["Ethiopian Coffee Beans"],
+          "allergens": ["None"],
+          "createdAt": "2022-10-15T09:45:00Z",
+          "updatedAt": "2022-10-15T09:45:00Z"
+        },
+        {
+          "id": "item5",
+          "restaurantId": "1",
+          "name": "Kitfo",
+          "description": "Minced raw beef seasoned with mitmita and niter kibbeh",
+          "price": 190,
+          "category": "Main Course",
+          "imageUrl": "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 15,
+          "ingredients": ["Beef", "Mitmita", "Niter Kibbeh"],
+          "allergens": ["Dairy"],
+          "createdAt": "2022-10-15T09:50:00Z",
+          "updatedAt": "2022-10-15T09:50:00Z"
+        },
+        {
+          "id": "item6",
+          "restaurantId": "1",
+          "name": "Shiro",
+          "description": "Pureed chickpeas simmered with spices",
+          "price": 120,
+          "category": "Main Course",
+          "imageUrl": "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 20,
+          "ingredients": ["Chickpea Flour", "Onions", "Garlic", "Ethiopian Spices"],
+          "allergens": ["None"],
+          "createdAt": "2022-10-15T09:55:00Z",
+          "updatedAt": "2022-10-15T09:55:00Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "review1",
+          "userId": "1",
+          "userName": "Makeda Haile",
+          "userAvatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200",
+          "rating": 5,
+          "text": "Amazing authentic Ethiopian food! The doro wat was perfect and the coffee ceremony was a wonderful experience.",
+          "date": "2023-04-15T18:30:00Z"
+        },
+        {
+          "id": "review2",
+          "userId": "2",
+          "userName": "Abebe Kebede",
+          "userAvatar": "https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200",
+          "rating": 4,
+          "text": "Great food and atmosphere. Service was a bit slow but worth the wait.",
+          "date": "2023-03-22T20:15:00Z"
+        },
+        {
+          "id": "review3",
+          "userId": "4",
+          "userName": "Dawit Mulugeta",
+          "userAvatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200",
+          "rating": 5,
+          "text": "Best Ethiopian restaurant in the city! The tibs are incredible and the staff is very friendly.",
+          "date": "2023-05-10T19:45:00Z"
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "name": "Habesha Cultural Restaurant",
+      "description": "Experience the rich cultural heritage of Ethiopia through our traditional cuisine and live performances.",
+      "address": "Kazanchis, Addis Ababa",
+      "cuisine": ["Ethiopian", "Cultural"],
+      "priceLevel": "$$$",
+      "openingHours": {
+        "Monday": {"open": "12:00", "close": "23:00"},
+        "Tuesday": {"open": "12:00", "close": "23:00"},
+        "Wednesday": {"open": "12:00", "close": "23:00"},
+        "Thursday": {"open": "12:00", "close": "23:00"},
+        "Friday": {"open": "12:00", "close": "00:00"},
+        "Saturday": {"open": "12:00", "close": "00:00"},
+        "Sunday": {"open": "12:00", "close": "23:00"}
+      },
+      "contactPhone": "+251922345678",
+      "contactEmail": "info@habesharestaurant.com",
+      "ownerId": "4",
+      "rating": 4.8,
+      "ratingCount": 95,
+      "imageUrl": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=500",
+      "coverImageUrl": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=500",
+      "isOpen": true,
+      "createdAt": "2022-11-05T10:45:00Z",
+      "updatedAt": "2023-04-18T16:30:00Z",
+      "location": {
+        "latitude": 9.0127,
+        "longitude": 38.7612
+      },
+      "categories": ["Dinner", "Lunch", "Cultural Experience", "Live Music"],
+      "menu": [
+        {
+          "id": "item7",
+          "restaurantId": "2",
+          "name": "Beyaynetu",
+          "description": "Vegetarian platter with various dishes",
+          "price": 150,
+          "category": "Main Course",
+          "imageUrl": "https://images.unsplash.com/photo-1547592180-85f173990554?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 25,
+          "ingredients": ["Misir Wot", "Gomen", "Shiro", "Tikil Gomen", "Injera"],
+          "allergens": ["Gluten"],
+          "createdAt": "2022-11-05T11:00:00Z",
+          "updatedAt": "2022-11-05T11:00:00Z"
+        },
+        {
+          "id": "item8",
+          "restaurantId": "2",
+          "name": "Special Kitfo",
+          "description": "Premium minced raw beef with homemade cottage cheese and collard greens",
+          "price": 220,
+          "category": "Main Course",
+          "imageUrl": "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 20,
+          "ingredients": ["Premium Beef", "Mitmita", "Niter Kibbeh", "Ayib", "Gomen"],
+          "allergens": ["Dairy"],
+          "createdAt": "2022-11-05T11:05:00Z",
+          "updatedAt": "2022-11-05T11:05:00Z"
+        },
+        {
+          "id": "item9",
+          "restaurantId": "2",
+          "name": "Tej",
+          "description": "Traditional honey wine",
+          "price": 80,
+          "category": "Beverage",
+          "imageUrl": "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 5,
+          "ingredients": ["Honey", "Gesho"],
+          "allergens": ["None"],
+          "createdAt": "2022-11-05T11:10:00Z",
+          "updatedAt": "2022-11-05T11:10:00Z"
+        },
+        {
+          "id": "item10",
+          "restaurantId": "2",
+          "name": "Cultural Meat Platter",
+          "description": "Assortment of traditional meat dishes for sharing",
+          "price": 350,
+          "category": "Main Course",
+          "imageUrl": "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 30,
+          "ingredients": ["Doro Wat", "Tibs", "Kitfo", "Dulet", "Injera"],
+          "allergens": ["None"],
+          "createdAt": "2022-11-05T11:15:00Z",
+          "updatedAt": "2022-11-05T11:15:00Z"
+        },
+        {
+          "id": "item11",
+          "restaurantId": "2",
+          "name": "Baklava",
+          "description": "Sweet pastry with layers of nuts and honey",
+          "price": 70,
+          "category": "Dessert",
+          "imageUrl": "https://images.unsplash.com/photo-1519676867240-f03562e64548?q=80&w=400",
+          "isAvailable": true,
+          "preparationTime": 10,
+          "ingredients": ["Phyllo Dough", "Nuts", "Honey", "Spices"],
+          "allergens": ["Nuts", "Gluten"],
+          "createdAt": "2022-11-05T11:20:00Z",
+          "updatedAt": "2022-11-05T11:20:00Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "review4",
+          "userId": "1",
+          "userName": "Makeda Haile",
+          "userAvatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200",
+          "rating": 5,
+          "text": "The cultural experience was amazing! Live music and traditional dancing while enjoying delicious food.",
+          "date": "2023-02-18T19:20:00Z"
+        },
+        {
+          "id": "review5",
+          "userId": "3",
+          "userName": "Sara Tesfaye",
+          "userAvatar": "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=200",
+          "rating": 4,
+          "text": "Great atmosphere and authentic food. A bit pricey but worth it for the experience.",
+          "date": "2023-01-05T21:10:00Z"
+        }
+      ]
+    }
+  ]
+}
