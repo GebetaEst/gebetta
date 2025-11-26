@@ -876,7 +876,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
         return MapPin;
     }
   };
-  console.log("giftLocationnnnnnnnnnnnnnnnnnnnn ####", giftLocation)
+  // console.log("giftLocationnnnnnnnnnnnnnnnnnnnn ####", giftLocation)
 
   if (isLoading) {
     return (
@@ -1062,7 +1062,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
             </View>
           ):null }
           {/* Location Tracking Section */}
-          {serviceType !== "gift" && (
+          {serviceType === "delivery" && (
             <View style={styles.section} onLayout={handleSectionLayout("location")}>
               <Text style={styles.sectionTitle}>Use Current location</Text>
               <View style={styles.locationContainer}>
@@ -1096,7 +1096,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
           )}
 
           {/* Delivery Address - Show/Hide Address List */}
-          {serviceType !== "gift" && (
+          {serviceType === "delivery" && (
             <Button style={styles.section} title={`${locationRefused ? "Hide Address List" : "Use Other Addresses"}`} onPress={() => {
               setLocationRefused(prev => !prev);
               fetchAddresses();
@@ -1178,7 +1178,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
           {/* Table Number for Dine-in */}
           {serviceType === "dine-in" && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Table</Text>
+              <Text style={styles.sectionTitle}>Table for how many</Text>
               <View style={styles.tableNumberContainer}>
                 {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map((num) => (
                   <TouchableOpacity
@@ -1351,7 +1351,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
                 <Text style={styles.summaryValue}>{subtotal.toFixed(2)} Birr</Text>
               </View>
 
-              {serviceType === "delivery" || serviceType === "gift" && (
+              {serviceType !== "pickup" && serviceType !== "dine-in" && (
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Delivery Fee</Text>
                   {isDeliveryFeeLoading ? (

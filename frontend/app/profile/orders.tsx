@@ -35,6 +35,7 @@ export default function OrdersScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
   const [fullScreenOrderId, setFullScreenOrderId] = useState<string | null>(null);
+  const [disconnectToIo, setDisconnectToIo] = useState(false);
   const [qrModalData, setQrModalData] = useState<{
     orderCode: string;
     verificationCode: string;
@@ -328,7 +329,7 @@ export default function OrdersScreen() {
                 // Adapted for new order format
                 // Use orderCode for Firebase tracking (matches delivery guy app)
                 const orderId =
-                  order.orderCode || order.orderId || order._id || order.id || "N/A";
+                 order.orderId ||  order.orderCode || order._id || order.id || "N/A";
 
                 const normalizedItems = Array.isArray(order.orderItems)
                   ? order.orderItems.map((item: any) => ({
@@ -617,7 +618,7 @@ export default function OrdersScreen() {
                             <View style={styles.actionContainer}>
                               <TouchableOpacity
                                 style={styles.trackButton}
-                                onPress={() => handleTrackDelivery(orderId)}
+                                onPress={() => {handleTrackDelivery(orderId); trackingOrderId === orderId ? setDisconnectToIo(!disconnectToIo) :null}}
                                 activeOpacity={0.9}
                               >
                                 <LinearGradient
@@ -645,6 +646,8 @@ export default function OrdersScreen() {
                               <View style={styles.inlineMapWrapper}>
                                 <TrackingMap 
                                   orderId={orderId}
+                                  disconnectToIo={disconnectToIo}
+                                  setDisconnectToIo={setDisconnectToIo}
                                 />
                               </View>
                               <TouchableOpacity
@@ -690,7 +693,7 @@ export default function OrdersScreen() {
               >
                 <View style={styles.modalHeaderContent}>
                   <Text style={styles.modalTitle}>
-                    Tracking Delivery - Order {orders.find(o => o._id === fullScreenOrderId)?.orderCode || fullScreenOrderId}
+                    Tracking Delivery 
                   </Text>
                   <TouchableOpacity
                     onPress={() => setFullScreenOrderId(null)}
