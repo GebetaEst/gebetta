@@ -158,7 +158,7 @@ const TrackingMap: React.FC<TrackingMapProps> = ({ orderId, disconnectToIo, setD
       setIsTracking(false);
       setTrackingInfo(null);
       addLog("Disconnected");
-      console.log("disconnect(*********************************)");
+      // console.log("disconnect(*********************************)");
     });
 
     return () => {
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   deliveryImage: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 18, 
   },
   notifications: {
     position: "absolute",

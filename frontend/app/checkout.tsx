@@ -233,6 +233,11 @@ const getAddressCoordinates = (
   const [isDeliveryFeeLoading, setIsDeliveryFeeLoading] = useState(false);
   const [giftLocation, setGiftLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [reviserPhone, setReviserPhone ] = useState<number | null>(null);
+  const [serviceFee, setServiceFee] = useState(0);
+  const [isServiceFeeLoading, setIsServiceFeeLoading] = useState(false);
+  const [missingDestinationError, setMissingDestinationError] = useState(false);
+  const [receiverPhoneError, setReceiverPhoneError] = useState<string | null>(null);
+  const [vehicleTypeError, setVehicleTypeError] = useState(false);
   
   // Track keyboard visibility to avoid footer overlaying inputs
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -269,7 +274,7 @@ const getAddressCoordinates = (
   };
 
   const apiDeliveryFee = getAPIDeliveryFee();
-  const total = getCartTotal() + tip + apiDeliveryFee;
+  const total = getCartTotal() + tip + apiDeliveryFee + ((serviceType === "dine-in" || serviceType === "pickup") ? serviceFee : 0);
 
   // const restaurant = restaurants.find((r) => r.id === restaurantId);
 
@@ -507,12 +512,15 @@ const getAddressCoordinates = (
   //handlePlaceOrder function to place an order
   const SERVICE_TYPE_TO_ORDER_TYPE = {
     delivery: "Delivery",
-    pickup: "Pickup",
-    "dine-in": "Dine-in",
+    pickup: "Takeaway",
+    "dine-in": "DineIn",
   } as const;
 
   const handlePlaceOrder = async () => {
     setIsProcessing(true);
+    setMissingDestinationError(false);
+    setReceiverPhoneError(null);
+    setVehicleTypeError(false);
     let result: any = null;
   
     try {
@@ -523,23 +531,23 @@ const getAddressCoordinates = (
       //   return;
       // }
   
-      if (serviceType === "dine-in" && !tableNumber) {
-        Alert.alert("Error", "Please enter your table number");
-        setIsProcessing(false);
-        return;
-      }
+      // if (serviceType === "dine-in" && !tableNumber) {
+      //   Alert.alert("Error", "Please enter your table number");
+      //   setIsProcessing(false);
+      //   return;
+      // }
   
-      if (serviceType === "pickup" && !pickupTime) {
-        Alert.alert("Error", "Please select a pickup time");
-        setIsProcessing(false);
-        return;
-      }
+      // if (serviceType === "pickup" && !pickupTime) {
+      //   Alert.alert("Error", "Please select a pickup time");
+      //   setIsProcessing(false);
+      //   return;
+      // }
   
       // Get current phone location for all order types
       let phoneLocation = currentLocation;
   
       // Only try to get location if we don't have it and user hasn't refused
-      if (!phoneLocation && !locationRefused) {
+      if (serviceType !== "dine-in" && serviceType !== "pickup" && !phoneLocation && !locationRefused) {
         console.log("Getting current location for order...");
         phoneLocation = await getCurrentLocation();
   
@@ -618,30 +626,34 @@ const getAddressCoordinates = (
         sponsoredPhone: serviceType === "gift" ? reviserPhone : null,
       };
       // Add service type specific fields
-      if (serviceType === "delivery" ) {
-        orderPayload.vehicleType = vehicleType;
-        orderPayload.destinationLocation = destinationLocation
-        orderPayload.callculatedDeliveryFee = apiDeliveryFee;
-      } else if (serviceType === "pickup") {
-        orderPayload.pickupTime = pickupTime;
-      } else if (serviceType === "gift") {
-        orderPayload.vehicleType = vehicleType;
-        orderPayload.callculatedDeliveryFee = apiDeliveryFee;
-
-        orderPayload.destinationLocation = giftLocation;
-      } else if (serviceType === "dine-in") {
-        orderPayload.tableNumber = tableNumber;
+      // Always send all relevant fields in the payload
+      const destinationToSend = serviceType === "gift" ? giftLocation : destinationLocation;
+      // Inline validations to highlight missing inputs
+      if ((serviceType === "delivery" || serviceType === "gift") && !vehicleType) {
+        setVehicleTypeError(true);
+        setIsProcessing(false);
+        return;
       }
+      if ((serviceType === "delivery" || serviceType === "gift") && !destinationToSend) {
+        setMissingDestinationError(true);
+        setIsProcessing(false);
+        return;
+      }
+      if (serviceType === "gift" && !reviserPhone) {
+        setReceiverPhoneError("Receiver phone is required");
+        setIsProcessing(false);
+        return;
+      }
+      orderPayload.vehicleType = vehicleType;
+      orderPayload.destinationLocation = destinationToSend;
+      orderPayload.callculatedDeliveryFee = apiDeliveryFee;
+      orderPayload.pickupTime = pickupTime;
+      orderPayload.tableNumber = tableNumber;
 
       // Add console logging to debug payload
       console.log("Order Payload being sent:", JSON.stringify(orderPayload, null, 2));
 
-      // Validate destinationLocation for delivery orders
-      if ((serviceType === "delivery") && !destinationLocation ) {
-        Alert.alert("Error", "Delivery location is required");
-        setIsProcessing(false);
-        return;
-      }
+      // Validate destination for delivery and gift orders handled above
 console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderPayload, null, 2));
       const response = await fetch(
         "https://gebeta-delivery1.onrender.com/api/v1/orders/place-order",
@@ -828,11 +840,46 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
     }
   }, [currentLocation, scrollToNextSection, selectedAddress, serviceType]);
 
+  useEffect(() => {
+    const fetchServiceFee = async () => {
+      if (serviceType !== "dine-in" && serviceType !== "pickup") {
+        setServiceFee(0);
+        return;
+      }
+      try {
+        setIsServiceFeeLoading(true);
+        const resp = await fetch("https://gebeta-delivery1.onrender.com/api/v1/orders/getServiceFee", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(user?.token ? { Authorization: `Bearer ${user.token}` } : {}),
+          },
+        });
+        const data = await resp.json().catch(() => null);
+        if (resp.ok && data?.data) {
+          const dineInFee = Number(data.data.dineInSeviceFee ?? 0);
+          const takeawayFee = Number(data.data.takeawayServiceFee ?? 0);
+          setServiceFee(serviceType === "dine-in" ? dineInFee : takeawayFee);
+        } else {
+          setServiceFee(0);
+        }
+      } catch (e) {
+        setServiceFee(0);
+      } finally {
+        setIsServiceFeeLoading(false);
+      }
+    };
+    fetchServiceFee();
+  }, [serviceType, user?.token]);
+
   const handleServiceTypeChange = (type: OrderServiceType) => {
     guidedScrollActive.current = false;
     locationStepCompletedRef.current = false;
     orderNotesStepCompletedRef.current = false;
     tipStepCompletedRef.current = false;
+    setMissingDestinationError(false);
+    setReceiverPhoneError(null);
+    setVehicleTypeError(false);
     setServiceType(type);
 
     // Reset related fields when changing service type
@@ -1009,18 +1056,29 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Gift Location</Text>
               <SendGift setGiftLocation={setGiftLocation} giftLocation={giftLocation} />
+              {missingDestinationError && (
+                <Text style={styles.errorText}>Please select a gift destination on the map</Text>
+              )}
               <View style={{ marginTop: 16 }}>
-                <Text style={styles.customTipLabel}>Reviser Phone</Text>
+                <Text style={styles.customTipLabel}>Receiver Phone</Text>
                 <TextInput
-                  style={[styles.customTipInput, { paddingVertical: 14 }]}
+                  style={[
+                    styles.customTipInput,
+                    { paddingVertical: 14 },
+                    receiverPhoneError ? styles.errorInput : null
+                  ]}
                   placeholder="Enter the phone number of the person you want to send the gift to"
                 value={reviserPhone !== null ? String(reviserPhone) : ""}
                 onChangeText={(text) => {
                   const digitsOnly = text.replace(/[^0-9]/g, "");
                   setReviserPhone(digitsOnly ? Number(digitsOnly) : null);
+                    if (receiverPhoneError) setReceiverPhoneError(null);
                 }}
                 keyboardType="phone-pad"
                 />
+                {receiverPhoneError && (
+                  <Text style={styles.errorText}>{receiverPhoneError}</Text>
+                )}
               </View>
             </View>
           )}
@@ -1059,6 +1117,9 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
                   );
                 })}
               </View>
+              {vehicleTypeError && (
+                <Text style={styles.errorText}>Please select a delivery vehicle</Text>
+              )}
             </View>
           ):null }
           {/* Location Tracking Section */}
@@ -1089,9 +1150,9 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
                   </TouchableOpacity>
                 )}
               </View>
-              {/* <Text style={styles.locationInfoText}>
-              Your exact location will be tracked when placing the order for better service delivery.
-            </Text> */}
+              {missingDestinationError && (
+                <Text style={styles.errorText}>Please provide a destination (current location or address)</Text>
+              )}
             </View>
           )}
 
@@ -1176,7 +1237,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
           )}
 
           {/* Table Number for Dine-in */}
-          {serviceType === "dine-in" && (
+          {/* {serviceType === "dine-in" && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Table for how many</Text>
               <View style={styles.tableNumberContainer}>
@@ -1201,10 +1262,10 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
                 ))}
               </View>
             </View>
-          )}
+          )} */}
 
           {/* Pickup Time for Pickup */}
-          {serviceType === "pickup" && (
+          {/* {serviceType === "pickup" && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Pickup Time</Text>
               <View style={styles.pickupTimeContainer}>
@@ -1229,7 +1290,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
                 ))}
               </View>
             </View>
-          )}
+          )} */}
 
           {/* Order Description */}
           <View style={styles.section} onLayout={handleSectionLayout("orderNotes")}>
@@ -1362,6 +1423,17 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
                 </View>
               )}
 
+              {(serviceType === "dine-in" || serviceType === "pickup") && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Service Fee</Text>
+                  {isServiceFeeLoading ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Text style={styles.summaryValue}>{serviceFee.toFixed(2)} Birr</Text>
+                  )}
+                </View>
+              )}
+
               {serviceType !== "dine-in" && (
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Tip</Text>
@@ -1373,7 +1445,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
 
               <View style={styles.summaryRow}>
                 <Text style={styles.totalLabel}>Total</Text>
-                {isDeliveryFeeLoading ? (
+                {(isDeliveryFeeLoading || isServiceFeeLoading) ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
                   <Text style={styles.totalValue}>{total.toFixed(2)} Birr</Text>
@@ -1393,7 +1465,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
             <View style={styles.totalContainer}>
               <View>
                 <Text style={styles.footerTotalLabel}>Total Amount</Text>
-                {isDeliveryFeeLoading ? (
+                {(isDeliveryFeeLoading || isServiceFeeLoading) ? (
                       <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
                       <Text style={styles.totalAmount}>{total.toFixed(2)} Birr</Text>
@@ -1411,9 +1483,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
               disabled={
                 isLoading ||
                 isProcessing ||
-                (serviceType === "delivery" && locationRefused && !selectedAddress) ||
-                (serviceType === "dine-in" && !tableNumber) ||
-                (serviceType === "pickup" && !pickupTime)
+                (serviceType === "delivery" && locationRefused && !selectedAddress)
               }
               style={styles.placeOrderButton}
               variant="primary"
@@ -2016,6 +2086,14 @@ const styles = StyleSheet.create({
     borderColor: colors.divider,
     fontSize: 16,
     color: colors.text,
+  },
+  errorInput: {
+    borderColor: "#DC2626",
+  },
+  errorText: {
+    color: "#DC2626",
+    fontSize: 12,
+    marginTop: 6,
   },
   orderSummaryCard: {
     marginBottom: 44,
