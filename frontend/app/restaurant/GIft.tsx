@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   KeyboardAvoidingView,
+  Image,
 } from "react-native";
 import MapView, { Marker, Region, PROVIDER_GOOGLE, MapPressEvent } from "react-native-maps";
 import * as Location from "expo-location";
@@ -110,7 +111,7 @@ const SendGift: React.FC<{ setGiftLocation: (location: { lat: number, lng: numbe
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Select Gift Location</Text>
+      {/* <Text style={styles.sectionTitle}>Select Gift Location</Text> */}
       <Text style={styles.instructions}>
         Enter a place name or tap anywhere on the map to select a location.
       </Text>
@@ -196,7 +197,14 @@ const SendGift: React.FC<{ setGiftLocation: (location: { lat: number, lng: numbe
               }}
               title="Selected Location"
               description={`Lat: ${coords.lat}, Lng: ${coords.lng}`}
-            />
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <Image
+                source={require("../../assets/images/android-chrome-192x192.png")}
+                style={styles.markerImage}
+                resizeMode="contain"
+              />
+            </Marker>
           )}
         </MapView>
       </View>
@@ -217,7 +225,7 @@ const SendGift: React.FC<{ setGiftLocation: (location: { lat: number, lng: numbe
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 16 },
+  container: { flex: 1, backgroundColor: colors.background, padding: 12 , paddingTop: 0},
   sectionTitle: {
     fontSize: 20,
     fontWeight: "600",
@@ -301,6 +309,11 @@ const styles = StyleSheet.create({
   label: { fontWeight: "600", fontSize: 20, color: colors.lightText },
   value: { fontSize: 16, color: colors.text, fontWeight: "500" },
   placeholder: { color: colors.lightText, fontStyle: "italic", fontSize: 14, marginTop: 8 },
+  markerImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
 });
 
 export default SendGift;

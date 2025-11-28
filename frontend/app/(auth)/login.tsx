@@ -157,7 +157,7 @@ export default function LoginScreen() {
       }, 2000);
     } catch (error: any) {
       console.error('❌ Error logging in:', error.message);
-      setResponseMessage(`❌ ${error.message}`);
+      setResponseMessage(`incorrect phone number or password`);
       setResponseType('error');
       setShowResponse(true);
 
@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
 
   },
   errorBanner: {
-    backgroundColor: 'rgba(255, 76, 76, 0.9)',
+    backgroundColor: 'rgba(255, 76, 76, 0.7)',
   },
   responseText: {
     color: '#fff',

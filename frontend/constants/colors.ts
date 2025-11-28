@@ -39,3 +39,34 @@ const colors = {
 };
 
 export default colors;
+
+// Dark mode color palette
+export const darkColors = {
+  // Primary colors
+  primary: "#FFFFFF",
+  secondary: "#D1D5DB",
+  accent: "#93C5FD",
+
+  // Background colors
+  background: "#0F172A", // dark background
+  cardBackground: "#111827",
+  inputBackground: "#1F2937",
+
+  // Text colors
+  text: "#E5E7EB",
+  textSecondary: "#9CA3AF",
+  placeholderText: "#6B7280",
+
+  // Status colors
+  success: "#34D399",
+  error: "#EF4444",
+  warning: "#F59E0B",
+  info: "#93C5F9",
+
+    // Common colors
+  white: "#FFFFFF",
+  black: "#000000",
+  gray: "#4B5563",
+  lightGray: "#6B7280",
+  darkGray: "#111827",
+} as const;

@@ -53,6 +53,7 @@ export default function MenuItemDetailScreen() {
   const [menuItem, setMenuItem] = useState<Food | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Fetch menu item data
   useEffect(() => {
@@ -135,10 +136,11 @@ export default function MenuItemDetailScreen() {
       normalizeRestaurantId(menuItem.menuId?.restaurantId);
 
     if (!resolvedRestaurantId) {
-      Alert.alert(
-        "Unable to add item",
-        "We couldn't determine which restaurant this item belongs to. Please try again later."
-      );
+      // Alert.alert(
+      //   "Unable to add item",
+      //   "We couldn't determine which restaurant this item belongs to. Please try again later."
+      // );
+      setErrorMessage("something went wrong check your internet connection");
       return;
     }
 
@@ -149,21 +151,22 @@ export default function MenuItemDetailScreen() {
       restaurantId: resolvedRestaurantId,
     });
     
-    Alert.alert(
-      "Added to Cart",
-      `${menuItem.foodName} added to your cart.`,
-      [
-        {
-          text: "Continue Shopping",
-          onPress: () => router.back(),
-          style: "cancel",
-        },
-        {
-          text: "View Cart",
-          onPress: () => router.push("/cart"),
-        },
-      ]
-    );
+    // Alert.alert(
+    //   "Added to Cart",
+    //   `${menuItem.foodName} added to your cart.`,
+    //   [
+    //     {
+    //       text: "Continue Shopping",
+    //       onPress: () => router.back(),
+    //       style: "cancel",
+    //     },
+    //     {
+    //       text: "View Cart",
+    //       onPress: () => router.push("/cart"),
+    //     },
+    //   ]
+    // );
+    router.push("/cart");    
   };
 
   return (

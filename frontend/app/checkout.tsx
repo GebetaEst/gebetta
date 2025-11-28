@@ -993,7 +993,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
       <View style={styles.headerGradient}>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Checkout</Text>
-          <Text style={styles.headerSubtitle}>Complete your order</Text>
+          {/* <Text style={styles.headerSubtitle}>Complete your order</Text> */}
         </View>
       </View>
 
@@ -1501,12 +1501,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: 28,
   },
   headerGradient: {
     paddingTop: 12,
     paddingBottom: 16,
     paddingHorizontal: 20,
     backgroundColor: colors.primary,
+   
   },
   headerContent: {
     alignItems: 'center',
