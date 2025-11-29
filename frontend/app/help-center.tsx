@@ -17,7 +17,6 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  HelpCircle,
   MessageCircle,
   MapPin
 } from 'lucide-react-native';
@@ -167,8 +166,58 @@ export default function HelpCenterScreen() {
       });
   };
 
+  const handleInstagramContact = () => {
+    const instagramUsername = 'gebetta_app';
+    const instagramUrl = `https://instagram.com/${instagramUsername}`;
+
+    Linking.canOpenURL(instagramUrl)
+      .then((supported) => {
+        if (supported) {
+          Linking.openURL(instagramUrl);
+        } else {
+          Alert.alert(
+            'Instagram Not Available',
+            `Please find us on Instagram: @${instagramUsername}`,
+            [{ text: 'OK' }]
+          );
+        }
+      })
+      .catch(() => {
+        Alert.alert(
+          'Instagram Not Available',
+          `Please find us on Instagram: @${instagramUsername}`,
+          [{ text: 'OK' }]
+        );
+      });
+  };
+
+  const handleTikTokContact = () => {
+    const tiktokUsername = 'gebetta_app';
+    const tiktokUrl = `https://www.tiktok.com/@${tiktokUsername}`;
+
+    Linking.canOpenURL(tiktokUrl)
+      .then((supported) => {
+        if (supported) {
+          Linking.openURL(tiktokUrl);
+        } else {
+          Alert.alert(
+            'TikTok Not Available',
+            `Please find us on TikTok: @${tiktokUsername}`,
+            [{ text: 'OK' }]
+          );
+        }
+      })
+      .catch(() => {
+        Alert.alert(
+          'TikTok Not Available',
+          `Please find us on TikTok: @${tiktokUsername}`,
+          [{ text: 'OK' }]
+        );
+      });
+  };
+
   const handleAddressContact = () => {
-    const addess = 'Bole Road, Addis Ababa, Ethiopia';
+    const address = 'Bole Road, Addis Ababa, Ethiopia';
     const mapsUrl = `https://maps.google.com/maps?q=${encodeURIComponent(address)}`;
     
     Linking.canOpenURL(mapsUrl)
@@ -218,7 +267,7 @@ export default function HelpCenterScreen() {
           </Text>
 
           {/* Office Address */}
-          <TouchableOpacity 
+          {/* <TouchableOpacity 
             style={styles.contactItem}
             onPress={handleAddressContact}
             activeOpacity={0.7}
@@ -231,7 +280,7 @@ export default function HelpCenterScreen() {
               <Text style={styles.contactDescription}>Bole Road, Addis Ababa, Ethiopia</Text>
             </View>
             <ChevronRight size={20} color={colors.lightText} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* Email Contact */}
           <TouchableOpacity 
@@ -244,7 +293,7 @@ export default function HelpCenterScreen() {
             </View>
             <View style={styles.contactContent}>
               <Text style={styles.contactTitle}>Email Support</Text>
-              <Text style={styles.contactDescription}>support@gebetta.app</Text>
+              <Text style={styles.contactDescription}>deliverygebeta@gmail.com</Text>
             </View>
             <ChevronRight size={20} color={colors.lightText} />
           </TouchableOpacity>
@@ -260,7 +309,7 @@ export default function HelpCenterScreen() {
             </View>
             <View style={styles.contactContent}>
               <Text style={styles.contactTitle}>Phone Support</Text>
-              <Text style={styles.contactDescription}>+251 911 234 567</Text>
+              <Text style={styles.contactDescription}>+2519 194 44499</Text>
             </View>
             <ChevronRight size={20} color={colors.lightText} />
           </TouchableOpacity>
@@ -280,12 +329,44 @@ export default function HelpCenterScreen() {
             </View>
             <ChevronRight size={20} color={colors.lightText} />
           </TouchableOpacity>
+
+          {/* Instagram */}
+          <TouchableOpacity 
+            style={styles.contactItem}
+            onPress={handleInstagramContact}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.contactIcon, { backgroundColor: '#E1306C' + '20' }]}>
+              <Text style={[styles.contactIconText, { color: '#E1306C' }]}>📸</Text>
+            </View>
+            <View style={styles.contactContent}>
+              <Text style={styles.contactTitle}>Instagram</Text>
+              <Text style={styles.contactDescription}>@gebetta_app</Text>
+            </View>
+            <ChevronRight size={20} color={colors.lightText} />
+          </TouchableOpacity>
+
+          {/* TikTok */}
+          <TouchableOpacity 
+            style={styles.contactItem}
+            onPress={handleTikTokContact}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.contactIcon, { backgroundColor: '#000000' + '20' }]}>
+              <Text style={[styles.contactIconText, { color: '#000000' }]}>🎵</Text>
+            </View>
+            <View style={styles.contactContent}>
+              <Text style={styles.contactTitle}>TikTok</Text>
+              <Text style={styles.contactDescription}>@gebetta_app</Text>
+            </View>
+            <ChevronRight size={20} color={colors.lightText} />
+          </TouchableOpacity>
         </View>
 
         {/* FAQs Section */}
         <View style={styles.section}>
           <View style={styles.faqHeader}>
-            <HelpCircle size={24} color={colors.primary} />
+            <MessageCircle size={24} color={colors.primary} />
             <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
           </View>
           <Text style={styles.sectionSubtitle}>
@@ -331,6 +412,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: 20,
   },
   header: {
     flexDirection: 'row',

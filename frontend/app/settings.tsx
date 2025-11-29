@@ -44,7 +44,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     // Simulate loading data
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 700));
       setIsLoading(false);
     };
     loadData();
@@ -160,10 +160,10 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>
+          <Text style={styles.title}>Privacy & Security</Text>
+          {/* <Text style={styles.subtitle}>
             Customize your app preferences
-          </Text>
+          </Text> */}
         </View>
 
         {isLoading ? (
@@ -172,7 +172,7 @@ export default function SettingsScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.section}>
+            {/* <View style={styles.section}>
               <Text style={styles.sectionTitle}>Preferences</Text>
               
               <View style={styles.settingItem}>
@@ -216,12 +216,12 @@ export default function SettingsScreen() {
               </TouchableOpacity>
               
 
-            </View>
+            </View> */}
             
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Privacy & Security</Text>
+              {/* <Text style={styles.sectionTitle}></Text> */}
               
-              <View style={styles.settingItem}>
+              {/* <View style={styles.settingItem}>
                 <View style={styles.settingInfo}>
                   <Lock size={20} color={colors.text} style={styles.settingIcon} />
                   <Text style={styles.settingText}>App Lock</Text>
@@ -232,9 +232,9 @@ export default function SettingsScreen() {
                   trackColor={{ false: colors.lightGray, true: colors.primary + "80" }}
                   thumbColor={settings.appLock ? colors.primary : colors.lightText}
                 />
-              </View>
+              </View> */}
               
-              {settings.appLock && (
+              {/* {settings.appLock && (
                 <>
                   <TouchableOpacity
                     style={styles.settingItem}
@@ -263,7 +263,7 @@ export default function SettingsScreen() {
                     </View>
                   </TouchableOpacity>
                 </>
-              )}
+              )} */}
               
               <TouchableOpacity
                 style={styles.settingItem}
@@ -302,7 +302,7 @@ export default function SettingsScreen() {
                 <ChevronRight size={16} color={colors.lightText} />
               </TouchableOpacity>
               
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 style={styles.settingItem}
                 onPress={handleContactSupport}
               >
@@ -311,7 +311,7 @@ export default function SettingsScreen() {
                   <Text style={styles.settingText}>Contact Support</Text>
                 </View>
                 <ChevronRight size={16} color={colors.lightText} />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
             
             <TouchableOpacity

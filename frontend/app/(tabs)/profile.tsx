@@ -17,6 +17,7 @@ import {
   ShoppingBag,
   UserMinus,
   UserPlus,
+  Headset,
 } from "lucide-react-native";
 
 import React, { useEffect, useState } from "react";
@@ -290,10 +291,10 @@ function ProfileContent() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.iconButton} onPress={handleSettings}>
-          <Settings size={24} color={colors.text} />
+        <Headset size={28  } color={colors.text} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.iconButton} onPress={handleLogout}>
-          <LogOut size={24} color={colors.text} />
+          <LogOut size={28  } color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -463,6 +464,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: 20,
   },
   loginPromptContainer: {
     flex: 1,
