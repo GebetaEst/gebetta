@@ -1,11 +1,8 @@
 {
-  "cli": {
-    "appVersionSource": "remote"
-  },
+  "cli": { "appVersionSource": "remote" },
   "build": {
-    "env": {
-      "EAS_USE_BUN": "0"
-    }
+    "development": { "env": { "EAS_USE_BUN": "0" } },
+    "preview": { "env": { "EAS_USE_BUN": "0" } },
+    "production": { "env": { "EAS_USE_BUN": "0" } }
   }
 }
-
