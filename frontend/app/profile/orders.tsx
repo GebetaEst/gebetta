@@ -3,7 +3,7 @@ import typography from "@/constants/typography";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/useAuthStore";
-import { ChevronRight, Clock, MapPin, ShoppingBag, X, ChevronDown, ChevronUp, ScanQrCodeIcon } from "lucide-react-native";
+import { ChevronRight, Clock, MapPin, ShoppingBag, X, ChevronDown, ChevronUp } from "lucide-react-native";
 import React, { useEffect, useState, useRef } from "react";
 import {
   SafeAreaView,
@@ -18,10 +18,11 @@ import {
   Dimensions,
   Platform,
   Modal,
+  RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import TrackingMap from "./TrackingMap";
-import { ScanQrCode } from "lucide-react-native";
+
 
 
 export default function OrdersScreen() {
@@ -42,6 +43,7 @@ export default function OrdersScreen() {
   } | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -81,13 +83,22 @@ export default function OrdersScreen() {
     }
   };
 
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchOrders(false);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     fetchOrders();
 
     // Set up interval to fetch every 5 minutes (300000 ms)
     intervalRef.current = setInterval(() => {
       fetchOrders(false); // Don't show loading spinner for background refresh
-    }, 50000) as unknown as NodeJS.Timeout;
+    }, 550000) as unknown as NodeJS.Timeout;
 
     // Cleanup on unmount
     return () => {
@@ -263,6 +274,27 @@ export default function OrdersScreen() {
             <Text style={styles.subtitle}>
               View and track your order history
             </Text>
+            {/* <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={() => fetchOrders()}
+                disabled={isLoading}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={["#3B82F6", "#2563EB"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[
+                    styles.refreshButtonGradient,
+                    isLoading ? { opacity: 0.7 } : null,
+                  ]}
+                >
+                  {/* <Text style={styles.refreshButtonIcon}>🔄</Text> 
+                  
+                </LinearGradient>
+              </TouchableOpacity> 
+            </View>*/}
           </Animated.View>
         </LinearGradient>
       </Animated.View>
@@ -270,6 +302,14 @@ export default function OrdersScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
       >
 
         {isLoading ? (
@@ -565,7 +605,7 @@ export default function OrdersScreen() {
                                     end={{ x: 1, y: 0 }}
                                     style={styles.qrButtonGradient}
                                   >
-                                    <Text style={styles.qrButtonIcon}><ScanQrCodeIcon size={18} color="#FFFFFF" /></Text>
+                                    <Text style={styles.qrButtonIcon}>🔳</Text>
                                     <Text style={styles.qrButtonText}>Show QR Code</Text>
                                   </LinearGradient>
                                 </TouchableOpacity>
@@ -661,7 +701,7 @@ export default function OrdersScreen() {
                                   end={{ x: 1, y: 0 }}
                                   style={styles.fullScreenButtonGradient}
                                 >
-                                  <Text style={styles.fullScreenButtonIcon}>🔍</Text>
+                  <Text style={styles.fullScreenButtonIcon}>🔍</Text>
                                   <Text style={styles.fullScreenButtonText}>
                                     View Full Screen
                                   </Text>
@@ -706,6 +746,8 @@ export default function OrdersScreen() {
               <View style={styles.modalBody}>
                 <TrackingMap 
                   orderId={fullScreenOrderId || ""}
+                  disconnectToIo={disconnectToIo}
+                  setDisconnectToIo={setDisconnectToIo}
                 />
               </View>
             </View>
@@ -797,6 +839,35 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
     opacity: 0.9,
+  },
+  headerActions: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  refreshButton: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+  },
+  refreshButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  refreshButtonIcon: {
+    fontSize: 16,
   },
   loadingContainer: {
     flex: 1,
