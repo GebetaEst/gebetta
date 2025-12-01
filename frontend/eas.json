@@ -1,0 +1,11 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "env": {
+      "EAS_USE_BUN": "0"
+    }
+  }
+}
+
