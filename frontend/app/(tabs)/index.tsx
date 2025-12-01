@@ -484,7 +484,7 @@ export default function HomeScreen() {
               {popularTags.map((tag , index) => (
                 <>
                   <CategoryPill
-                    key={index}
+                    key={`popularTags${index}`}
                     title={tag}
                     selected={selectedCategory === tag}
                     onPress={() => handleCategoryPress(tag)}
@@ -520,7 +520,7 @@ export default function HomeScreen() {
             >
               {filteredFoods.map((food , index) =>  (
                 <TouchableOpacity
-                  key={index}
+                  key={`filteredFoods${index}`}
                   style={styles.recipeCard}
                   onPress={() => {
                     const restaurantId =
@@ -576,7 +576,7 @@ export default function HomeScreen() {
 
             <FlatList
               data={filteredRestaurants}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => `filteredRestaurants${item.id}`}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.restaurantCard}

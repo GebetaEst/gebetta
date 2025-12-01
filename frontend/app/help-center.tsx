@@ -265,6 +265,8 @@ export default function HelpCenterScreen() {
           <Text style={styles.sectionSubtitle}>
             Get in touch with our support team
           </Text>
+       
+
 
           {/* Office Address */}
           {/* <TouchableOpacity 
@@ -431,6 +433,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
+    
   },
   headerTitle: {
     ...typography.heading3,

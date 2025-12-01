@@ -193,6 +193,8 @@ export default function WelcomeScreen() {
             
             <Text style={styles.subtitle}>
               Discover authentic Ethiopian flavors
+                  
+
             </Text>
             
             
@@ -277,6 +279,7 @@ export default function WelcomeScreen() {
                   <Ionicons name="arrow-forward" size={16} color={colors.white} />
                 </TouchableOpacity>
               ) : (
+                <>
                 <TouchableOpacity 
                   style={styles.getStartedButton}
                   onPress={handleGetStarted}
@@ -284,7 +287,9 @@ export default function WelcomeScreen() {
                 >
                   <Text style={styles.getStartedButtonText}>Get Started</Text>
                 </TouchableOpacity>
+                </>
               )}
+
             </View>
           </Animated.View>
         </ScrollView>
