@@ -71,7 +71,7 @@ export default function EditProfileScreen() {
       }
 
       const response = await fetch(
-        "https://gebeta-delivery1.onrender.com/api/v1/users/updateMe",
+        "https://api.bahirandelivery.cloud/api/v1/users/updateMe",
         {
           method: "PATCH",
           headers: {

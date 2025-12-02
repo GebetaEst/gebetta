@@ -63,7 +63,7 @@ interface ExtendedAddressFormProps extends AddressFormProps {
 
 export function AddressForm({ onSubmit: _onSubmit, initialData }: ExtendedAddressFormProps) {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const baseUrl = process.env.EXPO_PUBLIC_BASE_URL || 'https://gebeta-delivery1.onrender.com'; // Use env variable or fallback
+  const baseUrl = process.env.EXPO_PUBLIC_BASE_URL || 'https://api.bahirandelivery.cloud'; // Use env variable or fallback
   const { user } = useAuthStore();
   const addressSchema = z.object({
     name: z.string().min(3, 'Name must be at least 3 characters'),

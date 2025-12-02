@@ -26,7 +26,7 @@ import TrackingMap from "./TrackingMap";
 
 
 export default function OrdersScreen() {
-  const API_URL = "https://gebeta-delivery1.onrender.com/api/v1/orders/my-orders";
+  const API_URL = "https://api.bahirandelivery.cloud/api/v1/orders/my-orders";
   const router = useRouter();
   const { user } = useAuthStore();
   const AUTH_TOKEN = "user?.token";

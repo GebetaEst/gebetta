@@ -123,7 +123,7 @@ export default function VerifyScreen( { phoneNumber , signUP }: { phoneNumber: s
 
     try {
       const res = await fetch(
-        `https://gebeta-delivery1.onrender.com/api/v1/users/verify${signUP ? 'Signup' : ''}OTP`,
+        `https://api.bahirandelivery.cloud/api/v1/users/verify${signUP ? 'Signup' : ''}OTP`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

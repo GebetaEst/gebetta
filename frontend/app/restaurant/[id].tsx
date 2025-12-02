@@ -133,7 +133,7 @@ export default function RestaurantDetailScreen() {
   const [menuError, setMenuError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const baseUrl = 'https://gebeta-delivery1.onrender.com';
+  const baseUrl = 'https://api.bahirandelivery.cloud';
   const { user, setUser } = useAuthStore();
   const JWT_TOKEN = user?.token;
 

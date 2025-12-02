@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  BASE_URL: "https://gebeta-delivery1.onrender.com/api/v1",
+  BASE_URL: "https://api.bahirandelivery.cloud/api/v1",
   TIMEOUT: 10000,
   HEADERS: {
     "Content-Type": "application/json",

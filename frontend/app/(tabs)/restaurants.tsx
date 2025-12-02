@@ -158,7 +158,7 @@ export default function RestaurantsScreen() {
       setIsLoading(true);
       setError(null);
       console.log('Fetching restaurants...');
-      const response = await axios.get('https://gebeta-delivery1.onrender.com/api/v1/restaurants');
+      const response = await axios.get('https://api.bahirandelivery.cloud/api/v1/restaurants');
       console.log('API Response:', response);
 
       // Handle different possible response structures

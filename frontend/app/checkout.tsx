@@ -186,7 +186,7 @@ const getAddressCoordinates = (
 
     setIsLoadingAddresses(true);
     try {
-      const response = await fetch("https://gebeta-delivery1.onrender.com/api/v1/users/myAddresses", {
+      const response = await fetch("https://api.bahirandelivery.cloud/api/v1/users/myAddresses", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${user.token}`,
@@ -465,7 +465,7 @@ const getAddressCoordinates = (
     };
 
     try {
-      const deliveryResponse = await fetch("https://gebeta-delivery1.onrender.com/api/v1/orders/estimate-delivery-fee", {
+      const deliveryResponse = await fetch("https://api.bahirandelivery.cloud/api/v1/orders/estimate-delivery-fee", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -656,7 +656,7 @@ const getAddressCoordinates = (
       // Validate destination for delivery and gift orders handled above
 console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderPayload, null, 2));
       const response = await fetch(
-        "https://gebeta-delivery1.onrender.com/api/v1/orders/place-order",
+        "https://api.bahirandelivery.cloud/api/v1/orders/place-order",
         {
           method: "POST",          headers: {
             "Content-Type": "application/json",
@@ -848,7 +848,7 @@ console.log("Order Payload being sent: 633{checkout.tsx}", JSON.stringify(orderP
       }
       try {
         setIsServiceFeeLoading(true);
-        const resp = await fetch("https://gebeta-delivery1.onrender.com/api/v1/orders/getServiceFee", {
+        const resp = await fetch("https://api.bahirandelivery.cloud/api/v1/orders/getServiceFee", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",

@@ -32,7 +32,7 @@ const INITIAL_REGION: Region = {
   longitudeDelta: 0.05,
 };
 
-const DEFAULT_SOCKET_URL = "https://gebeta-delivery1.onrender.com";
+const DEFAULT_SOCKET_URL = "https://api.bahirandelivery.cloud";
 
 const TrackingMap: React.FC<TrackingMapProps> = ({ orderId, disconnectToIo, setDisconnectToIo }) => {
   const { user } = useAuthStore();

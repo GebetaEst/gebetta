@@ -83,7 +83,7 @@ export default function Signup() {
     setError("");
 
     try {
-      const response = await fetch("https://gebeta-delivery1.onrender.com/api/v1/users/signup", {
+      const response = await fetch("https://api.bahirandelivery.cloud/api/v1/users/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

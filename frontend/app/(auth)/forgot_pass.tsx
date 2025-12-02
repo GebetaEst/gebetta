@@ -62,7 +62,7 @@ const ForgotPasswordScreen = () => {
 
     try {
       const res = await axios.post(
-        "https://gebeta-delivery1.onrender.com/api/v1/users/requestResetOTP",
+        "https://api.bahirandelivery.cloud/api/v1/users/requestResetOTP",
         {
           phone: phone,
         }

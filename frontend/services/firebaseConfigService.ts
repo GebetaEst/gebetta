@@ -36,7 +36,7 @@ export const fetchAndInitializeFirebase = async (
     console.log('🔥 Fetching Firebase config from API...');
     
     const response = await fetch(
-      'https://gebeta-delivery1.onrender.com/api/v1/config/getFirebaseConfig',
+      'https://api.bahirandelivery.cloud/api/v1/config/getFirebaseConfig',
       {
         method: 'GET',
         headers: {

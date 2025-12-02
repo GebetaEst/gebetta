@@ -56,7 +56,7 @@ export const useTokenStore = create<TokenState>()(
         if (!refreshToken) return false;
 
         try {
-          const response = await fetch('https://gebeta-delivery1.onrender.com/api/v1/users/refresh-token', {
+          const response = await fetch('https://api.bahirandelivery.cloud/api/v1/users/refresh-token', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

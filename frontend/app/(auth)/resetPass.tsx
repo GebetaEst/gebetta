@@ -87,7 +87,7 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setSho
     try {
       setLoading(true);
       const res = await axios.post(
-        "https://gebeta-delivery1.onrender.com/api/v1/users/resetPasswordOTP",
+        "https://api.bahirandelivery.cloud/api/v1/users/resetPasswordOTP",
         {
           phone,
           code,
@@ -123,7 +123,7 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({ phone, setSho
     }
     try {
       const res = await axios.post(
-        "https://gebeta-delivery1.onrender.com/api/v1/users/requestResetOTP",
+        "https://api.bahirandelivery.cloud/api/v1/users/requestResetOTP",
         { phone }
       );
       setMessage(res.data.message || "OTP resent");

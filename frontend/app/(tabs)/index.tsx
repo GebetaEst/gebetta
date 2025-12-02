@@ -190,7 +190,7 @@ export default function HomeScreen() {
   const fetchRealRestaurants = async () => {
     try {
       setIsLoadingRealRestaurants(true);
-      const response = await axios.get('https://gebeta-delivery1.onrender.com/api/v1/restaurants');
+      const response = await axios.get('https://api.bahirandelivery.cloud/api/v1/restaurants');
       // console.log('{tabs}/index.tsx Home page API Response:', response);
 
       let restaurantsData = [];
@@ -224,7 +224,7 @@ export default function HomeScreen() {
   const fetchFoods = async () => {
     try {
       setIsLoadingFoods(true);
-      const response = await axios.get('https://gebeta-delivery1.onrender.com/api/v1/foods');
+      const response = await axios.get('https://api.bahirandelivery.cloud/api/v1/foods');
       // console.log('Foods API Response:', response);
 
       let foodsData = [];
