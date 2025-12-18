@@ -1,0 +1,274 @@
+{
+  "recipes": [
+    {
+      "id": "recipe1",
+      "title": "Homemade Doro Wat",
+      "description": "Traditional Ethiopian spicy chicken stew, perfect for special occasions and family gatherings.",
+      "prepTime": 30,
+      "cookTime": 90,
+      "servings": 6,
+      "difficulty": "Medium",
+      "ingredients": [
+        {
+          "name": "Chicken",
+          "amount": "2 lbs",
+          "notes": "Cut into pieces, skin removed"
+        },
+        {
+          "name": "Berbere spice",
+          "amount": "1/4 cup",
+          "notes": "Adjust according to spice preference"
+        },
+        {
+          "name": "Onions",
+          "amount": "4 large",
+          "notes": "Finely chopped"
+        },
+        {
+          "name": "Garlic",
+          "amount": "6 cloves",
+          "notes": "Minced"
+        },
+        {
+          "name": "Ginger",
+          "amount": "2 tbsp",
+          "notes": "Freshly grated"
+        },
+        {
+          "name": "Niter Kibbeh",
+          "amount": "1/4 cup",
+          "notes": "Ethiopian spiced butter"
+        },
+        {
+          "name": "Hard-boiled eggs",
+          "amount": "6",
+          "notes": "Peeled"
+        },
+        {
+          "name": "Lemon juice",
+          "amount": "2 tbsp",
+          "notes": "Freshly squeezed"
+        },
+        {
+          "name": "Salt",
+          "amount": "To taste",
+          "notes": ""
+        }
+      ],
+      "instructions": [
+        "Clean the chicken pieces with lemon juice and rinse with cold water.",
+        "In a large pot, cook the onions over medium heat until soft and translucent, about 10 minutes. No need to add oil as the onions will release moisture.",
+        "Add the garlic and ginger, continue cooking for 5 minutes.",
+        "Stir in the berbere spice and cook for another 5 minutes, stirring frequently.",
+        "Add the niter kibbeh and stir until melted and well combined with the spices.",
+        "Add the chicken pieces to the pot, stirring to coat them with the sauce.",
+        "Pour in enough water to just cover the chicken, bring to a boil, then reduce heat to low.",
+        "Simmer covered for about 45 minutes, stirring occasionally.",
+        "Add the hard-boiled eggs and continue to simmer for another 15-20 minutes until the sauce has thickened.",
+        "Adjust seasoning with salt if needed.",
+        "Serve hot with injera bread."
+      ],
+      "tags": ["Ethiopian", "Spicy", "Stew", "Chicken", "Traditional"],
+      "cuisine": "Ethiopian",
+      "mealType": "Dinner",
+      "calories": 450,
+      "userId": "3",
+      "imageUrl": "https://images.unsplash.com/photo-1567360425618-1594206637d2?q=80&w=400",
+      "rating": 4.8,
+      "ratingCount": 24,
+      "comments": [
+        {
+          "id": "comment1",
+          "userId": "1",
+          "userName": "Makeda Haile",
+          "userAvatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200",
+          "text": "This recipe is amazing! Just like my grandmother used to make.",
+          "rating": 5,
+          "createdAt": "2023-04-10T14:30:00Z"
+        },
+        {
+          "id": "comment2",
+          "userId": "2",
+          "userName": "Abebe Kebede",
+          "userAvatar": "https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200",
+          "text": "Great recipe but I found it a bit too spicy. I'll use less berbere next time.",
+          "rating": 4,
+          "createdAt": "2023-04-15T18:45:00Z"
+        }
+      ],
+      "isFavorite": false,
+      "createdAt": "2023-03-20T10:15:00Z",
+      "updatedAt": "2023-04-15T18:45:00Z"
+    },
+    {
+      "id": "recipe2",
+      "title": "Authentic Injera",
+      "description": "Traditional Ethiopian sourdough flatbread, the foundation of Ethiopian cuisine.",
+      "prepTime": 20,
+      "cookTime": 15,
+      "servings": 8,
+      "difficulty": "Hard",
+      "ingredients": [
+        {
+          "name": "Teff flour",
+          "amount": "2 cups",
+          "notes": "Use 100% teff for authentic flavor"
+        },
+        {
+          "name": "Water",
+          "amount": "3 cups",
+          "notes": "Room temperature"
+        },
+        {
+          "name": "Salt",
+          "amount": "1/2 tsp",
+          "notes": ""
+        },
+        {
+          "name": "Starter culture",
+          "amount": "1/4 cup",
+          "notes": "From previous batch or ersho"
+        }
+      ],
+      "instructions": [
+        "In a large bowl, mix teff flour with water until you have a smooth, thin batter.",
+        "Add the starter culture and mix well.",
+        "Cover the bowl with a cloth and let it ferment at room temperature for 3-4 days. The batter will become bubbly and have a sour smell.",
+        "Once fermented, add salt and stir.",
+        "Heat a non-stick pan or traditional mitad on medium heat.",
+        "Pour a thin layer of batter onto the pan in a circular motion, starting from the outside and moving inward.",
+        "Cover and cook for about 2-3 minutes until bubbles form on the surface and the edges begin to lift.",
+        "Do not flip the injera. It should only be cooked on one side.",
+        "Remove from the pan and let cool on a clean cloth.",
+        "Repeat with the remaining batter.",
+        "Stack the cooled injera and serve with various stews and dishes."
+      ],
+      "tags": ["Ethiopian", "Bread", "Fermented", "Gluten-Free", "Vegan"],
+      "cuisine": "Ethiopian",
+      "mealType": "Side",
+      "calories": 150,
+      "userId": "3",
+      "imageUrl": "https://images.unsplash.com/photo-1566057340638-cacdc5f6c1c4?q=80&w=400",
+      "rating": 4.5,
+      "ratingCount": 18,
+      "comments": [
+        {
+          "id": "comment3",
+          "userId": "4",
+          "userName": "Dawit Mulugeta",
+          "userAvatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200",
+          "text": "Perfect recipe! The fermentation time is key for authentic flavor.",
+          "rating": 5,
+          "createdAt": "2023-04-05T16:20:00Z"
+        },
+        {
+          "id": "comment4",
+          "userId": "1",
+          "userName": "Makeda Haile",
+          "userAvatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200",
+          "text": "I struggled with getting the right consistency at first, but after a few tries it came out perfect!",
+          "rating": 4,
+          "createdAt": "2023-04-12T13:10:00Z"
+        }
+      ],
+      "isFavorite": false,
+      "createdAt": "2023-03-25T11:30:00Z",
+      "updatedAt": "2023-04-12T13:10:00Z"
+    },
+    {
+      "id": "recipe3",
+      "title": "Tibs with Vegetables",
+      "description": "Sautéed beef with vegetables and aromatic spices, a popular Ethiopian dish.",
+      "prepTime": 20,
+      "cookTime": 30,
+      "servings": 4,
+      "difficulty": "Easy",
+      "ingredients": [
+        {
+          "name": "Beef sirloin",
+          "amount": "1.5 lbs",
+          "notes": "Cut into 1-inch cubes"
+        },
+        {
+          "name": "Onion",
+          "amount": "1 large",
+          "notes": "Sliced"
+        },
+        {
+          "name": "Tomatoes",
+          "amount": "2 medium",
+          "notes": "Diced"
+        },
+        {
+          "name": "Jalapeño peppers",
+          "amount": "2",
+          "notes": "Seeded and sliced"
+        },
+        {
+          "name": "Bell peppers",
+          "amount": "1 each (red and green)",
+          "notes": "Sliced"
+        },
+        {
+          "name": "Garlic",
+          "amount": "4 cloves",
+          "notes": "Minced"
+        },
+        {
+          "name": "Rosemary",
+          "amount": "2 sprigs",
+          "notes": "Fresh"
+        },
+        {
+          "name": "Niter Kibbeh",
+          "amount": "3 tbsp",
+          "notes": "Ethiopian spiced butter"
+        },
+        {
+          "name": "Berbere spice",
+          "amount": "1 tbsp",
+          "notes": "Optional, for spicy version"
+        },
+        {
+          "name": "Salt and pepper",
+          "amount": "To taste",
+          "notes": ""
+        }
+      ],
+      "instructions": [
+        "Heat a large skillet or wok over high heat.",
+        "Add the niter kibbeh and let it melt.",
+        "Add the beef cubes and sear on all sides until browned but still pink inside, about 5 minutes.",
+        "Remove the beef and set aside.",
+        "In the same pan, add the onions and cook until translucent, about 3 minutes.",
+        "Add the garlic, jalapeños, and bell peppers, and cook for another 3 minutes.",
+        "Add the tomatoes, rosemary, and berbere spice (if using), and cook for 2 minutes.",
+        "Return the beef to the pan, season with salt and pepper, and stir to combine.",
+        "Cook for another 2-3 minutes until everything is well combined and the beef is cooked to your liking.",
+        "Serve hot with injera bread."
+      ],
+      "tags": ["Ethiopian", "Beef", "Quick", "Spicy", "Dinner"],
+      "cuisine": "Ethiopian",
+      "mealType": "Dinner",
+      "calories": 380,
+      "userId": "1",
+      "imageUrl": "https://images.unsplash.com/photo-1511910849309-0dffb8785146?q=80&w=400",
+      "rating": 4.7,
+      "ratingCount": 15,
+      "comments": [
+        {
+          "id": "comment5",
+          "userId": "3",
+          "userName": "Sara Tesfaye",
+          "userAvatar": "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=200",
+          "text": "I love how quick and flavorful this recipe is! Perfect for weeknight dinners.",
+          "rating": 5,
+          "createdAt": "2023-04-18T19:30:00Z"
+        }
+      ],
+      "isFavorite": false,
+      "createdAt": "2023-04-01T15:45:00Z",
+      "updatedAt": "2023-04-18T19:30:00Z"
+    }
+  ]
+}
