@@ -1,0 +1,296 @@
+{
+  "orders": [
+    {
+      "id": "order1",
+      "userId": "1",
+      "restaurantId": "1",
+      "items": [
+        {
+          "id": "orderItem1",
+          "menuItemId": "item1",
+          "name": "Doro Wat",
+          "price": 180,
+          "quantity": 2,
+          "specialInstructions": "Extra spicy please"
+        },
+        {
+          "id": "orderItem2",
+          "menuItemId": "item3",
+          "name": "Injera",
+          "price": 30,
+          "quantity": 4,
+          "specialInstructions": ""
+        },
+        {
+          "id": "orderItem3",
+          "menuItemId": "item4",
+          "name": "Ethiopian Coffee Ceremony",
+          "price": 120,
+          "quantity": 1,
+          "specialInstructions": ""
+        }
+      ],
+      "status": "delivered",
+      "totalAmount": 570,
+      "paymentMethod": "card",
+      "paymentStatus": "paid",
+      "serviceType": "delivery",
+      "deliveryAddress": "Bole Road, Sunshine Apartments, Block B, Addis Ababa",
+      "deliveryFee": 50,
+      "specialInstructions": "Please include extra napkins",
+      "createdAt": "2023-05-10T18:30:00Z",
+      "updatedAt": "2023-05-10T19:45:00Z"
+    },
+    {
+      "id": "order2",
+      "userId": "1",
+      "restaurantId": "1",
+      "items": [
+        {
+          "id": "orderItem4",
+          "menuItemId": "item5",
+          "name": "Kitfo",
+          "price": 190,
+          "quantity": 1,
+          "specialInstructions": "Medium rare"
+        },
+        {
+          "id": "orderItem5",
+          "menuItemId": "item3",
+          "name": "Injera",
+          "price": 30,
+          "quantity": 2,
+          "specialInstructions": ""
+        }
+      ],
+      "status": "delivered",
+      "totalAmount": 250,
+      "paymentMethod": "card",
+      "paymentStatus": "paid",
+      "serviceType": "pickup",
+      "pickupTime": "2023-05-15T19:00:00Z",
+      "specialInstructions": "",
+      "createdAt": "2023-05-15T18:15:00Z",
+      "updatedAt": "2023-05-15T19:10:00Z"
+    },
+    {
+      "id": "order3",
+      "userId": "2",
+      "restaurantId": "2",
+      "items": [
+        {
+          "id": "orderItem6",
+          "menuItemId": "item8",
+          "name": "Special Kitfo",
+          "price": 220,
+          "quantity": 1,
+          "specialInstructions": "Leb leb (slightly cooked)"
+        },
+        {
+          "id": "orderItem7",
+          "menuItemId": "item9",
+          "name": "Tej",
+          "price": 80,
+          "quantity": 2,
+          "specialInstructions": ""
+        }
+      ],
+      "status": "delivered",
+      "totalAmount": 380,
+      "paymentMethod": "mobile",
+      "paymentStatus": "paid",
+      "serviceType": "dine-in",
+      "tableNumber": "12",
+      "specialInstructions": "",
+      "createdAt": "2023-05-18T20:00:00Z",
+      "updatedAt": "2023-05-18T22:30:00Z"
+    },
+    {
+      "id": "order4",
+      "userId": "4",
+      "restaurantId": "1",
+      "items": [
+        {
+          "id": "orderItem8",
+          "menuItemId": "item2",
+          "name": "Tibs",
+          "price": 160,
+          "quantity": 1,
+          "specialInstructions": ""
+        },
+        {
+          "id": "orderItem9",
+          "menuItemId": "item6",
+          "name": "Shiro",
+          "price": 120,
+          "quantity": 1,
+          "specialInstructions": ""
+        },
+        {
+          "id": "orderItem10",
+          "menuItemId": "item3",
+          "name": "Injera",
+          "price": 30,
+          "quantity": 3,
+          "specialInstructions": ""
+        }
+      ],
+      "status": "delivered",
+      "totalAmount": 370,
+      "paymentMethod": "mobile",
+      "paymentStatus": "paid",
+      "serviceType": "delivery",
+      "deliveryAddress": "Kazanchis, Kazanchis Tower, Apt 502, Addis Ababa",
+      "deliveryFee": 50,
+      "specialInstructions": "Ring the doorbell upon arrival",
+      "createdAt": "2023-05-20T19:15:00Z",
+      "updatedAt": "2023-05-20T20:30:00Z"
+    },
+    {
+      "id": "order5",
+      "userId": "3",
+      "restaurantId": "2",
+      "items": [
+        {
+          "id": "orderItem11",
+          "menuItemId": "item10",
+          "name": "Cultural Meat Platter",
+          "price": 350,
+          "quantity": 1,
+          "specialInstructions": "For 2 people"
+        },
+        {
+          "id": "orderItem12",
+          "menuItemId": "item9",
+          "name": "Tej",
+          "price": 80,
+          "quantity": 2,
+          "specialInstructions": ""
+        },
+        {
+          "id": "orderItem13",
+          "menuItemId": "item11",
+          "name": "Baklava",
+          "price": 70,
+          "quantity": 2,
+          "specialInstructions": ""
+        }
+      ],
+      "status": "delivered",
+      "totalAmount": 650,
+      "paymentMethod": "card",
+      "paymentStatus": "paid",
+      "serviceType": "dine-in",
+      "tableNumber": "8",
+      "specialInstructions": "Celebrating anniversary, any special touch would be appreciated",
+      "createdAt": "2023-05-22T19:30:00Z",
+      "updatedAt": "2023-05-22T22:00:00Z"
+    },
+    {
+      "id": "order6",
+      "userId": "1",
+      "restaurantId": "1",
+      "items": [
+        {
+          "id": "orderItem14",
+          "menuItemId": "item1",
+          "name": "Doro Wat",
+          "price": 180,
+          "quantity": 1,
+          "specialInstructions": ""
+        },
+        {
+          "id": "orderItem15",
+          "menuItemId": "item3",
+          "name": "Injera",
+          "price": 30,
+          "quantity": 2,
+          "specialInstructions": ""
+        }
+      ],
+      "status": "preparing",
+      "totalAmount": 240,
+      "paymentMethod": "card",
+      "paymentStatus": "paid",
+      "serviceType": "delivery",
+      "deliveryAddress": "Bole Road, Sunshine Apartments, Block B, Addis Ababa",
+      "deliveryFee": 50,
+      "specialInstructions": "",
+      "createdAt": "2023-05-25T18:45:00Z",
+      "updatedAt": "2023-05-25T19:00:00Z"
+    },
+    {
+      "id": "order7",
+      "userId": "2",
+      "restaurantId": "2",
+      "items": [
+        {
+          "id": "orderItem16",
+          "menuItemId": "item7",
+          "name": "Beyaynetu",
+          "price": 150,
+          "quantity": 2,
+          "specialInstructions": ""
+        },
+        {
+          "id": "orderItem17",
+          "menuItemId": "item9",
+          "name": "Tej",
+          "price": 80,
+          "quantity": 2,
+          "specialInstructions": ""
+        }
+      ],
+      "status": "confirmed",
+      "totalAmount": 460,
+      "paymentMethod": "mobile",
+      "paymentStatus": "paid",
+      "serviceType": "pickup",
+      "pickupTime": "2023-05-25T20:30:00Z",
+      "specialInstructions": "",
+      "createdAt": "2023-05-25T19:45:00Z",
+      "updatedAt": "2023-05-25T19:50:00Z"
+    },
+    {
+      "id": "order8",
+      "userId": "4",
+      "restaurantId": "1",
+      "items": [
+        {
+          "id": "orderItem18",
+          "menuItemId": "item6",
+          "name": "Shiro",
+          "price": 120,
+          "quantity": 1,
+          "specialInstructions": ""
+        },
+        {
+          "id": "orderItem19",
+          "menuItemId": "item3",
+          "name": "Injera",
+          "price": 30,
+          "quantity": 2,
+          "specialInstructions": ""
+        },
+        {
+          "id": "orderItem20",
+          "menuItemId": "item4",
+          "name": "Ethiopian Coffee Ceremony",
+          "price": 120,
+          "quantity": 1,
+          "specialInstructions": ""
+        }
+      ],
+      "status": "pending",
+      "totalAmount": 300,
+      "paymentMethod": "mobile",
+      "paymentStatus": "pending",
+      "serviceType": "delivery",
+      "deliveryAddress": "Kazanchis, Kazanchis Tower, Apt 502, Addis Ababa",
+      "deliveryFee": 50,
+      "specialInstructions": "",
+      "createdAt": "2023-05-25T20:00:00Z",
+      "updatedAt": "2023-05-25T20:00:00Z"
+    }
+  ]
+}
