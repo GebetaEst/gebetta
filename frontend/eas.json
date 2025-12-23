@@ -1,0 +1,19 @@
+{
+  "cli": { "appVersionSource": "remote" },
+  "build": {
+    "development": {
+      "env": { "EAS_USE_BUN": "0" },
+      "android": { "buildType": "apk" },
+      "distribution": "internal"
+    },
+    "preview": {
+      "env": { "EAS_USE_BUN": "0" },
+      "android": { "buildType": "apk" },
+      "distribution": "internal"
+    },
+    "production": {
+      "env": { "EAS_USE_BUN": "0" },
+      "android": { "buildType": "app-bundle" }
+    }
+  }
+}
